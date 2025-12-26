@@ -1,23 +1,25 @@
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
-const http = require('http');
-const swaggerUi = require('swagger-ui-express');
-const swaggerSpec = require('./src/config/swagger');
-require('dotenv').config();
+import express, { Request, Response, NextFunction } from 'express';
+import cors from 'cors';
+import path from 'path';
+import http from 'http';
+import swaggerUi from 'swagger-ui-express';
+import swaggerSpec from './src/config/swagger';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 // Import Routes
-const whatsappRoutes = require('./src/routes/whatsapp');
+import whatsappRoutes from './src/routes/whatsapp';
 
 // Import Middleware
-const apiKeyAuth = require('./src/middleware/apiKeyAuth');
+import apiKeyAuth from './src/middleware/apiKeyAuth';
 
 // Import WebSocket Manager
-const wsManager = require('./src/services/websocket/WebSocketManager');
+import wsManager from './src/services/websocket/WebSocketManager';
 
 // Initialize WebSocket
 wsManager.initialize(server, {
@@ -35,17 +37,17 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/media', express.static(path.join(__dirname, 'public', 'media')));
 
 // Serve Dashboard
-app.get('/dashboard', (req, res) => {
+app.get('/dashboard', (req: Request, res: Response) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
 // Serve WebSocket test page
-app.get('/ws-test', (req, res) => {
+app.get('/ws-test', (req: Request, res: Response) => {
     res.sendFile(path.join(__dirname, 'public', 'websocket-test.html'));
 });
 
 // Swagger UI Options
-const swaggerUiOptions = {
+const swaggerUiOptions: swaggerUi.SwaggerUiOptions = {
     customCss: `
         .swagger-ui .topbar { display: none }
         .swagger-ui .info { margin: 20px 0 }
@@ -60,12 +62,12 @@ app.use('/', swaggerUi.serve);
 app.get('/', swaggerUi.setup(swaggerSpec, swaggerUiOptions));
 
 // Swagger JSON endpoint
-app.get('/api-docs.json', (req, res) => {
+app.get('/api-docs.json', (req: Request, res: Response) => {
     res.setHeader('Content-Type', 'application/json');
     res.send(swaggerSpec);
 });
 
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (req: Request, res: Response) => {
     res.json({
         success: true,
         message: 'Server is running',
@@ -74,7 +76,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Dashboard Login
-app.post('/api/dashboard/login', (req, res) => {
+app.post('/api/dashboard/login', (req: Request, res: Response) => {
     const { username, password } = req.body;
     
     const validUsername = process.env.DASHBOARD_USERNAME || 'admin';
@@ -94,7 +96,7 @@ app.post('/api/dashboard/login', (req, res) => {
 });
 
 // WebSocket Stats
-app.get('/api/websocket/stats', (req, res) => {
+app.get('/api/websocket/stats', (req: Request, res: Response) => {
     res.json({
         success: true,
         data: wsManager.getStats()
@@ -105,7 +107,7 @@ app.get('/api/websocket/stats', (req, res) => {
 app.use('/api/whatsapp', apiKeyAuth, whatsappRoutes);
 
 // 404 Handler
-app.use((req, res) => {
+app.use((req: Request, res: Response) => {
     res.status(404).json({
         success: false,
         message: 'Route not found'
@@ -113,7 +115,7 @@ app.use((req, res) => {
 });
 
 // Error Handler
-app.use((err, req, res, next) => {
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     console.error(err.stack);
     res.status(500).json({
         success: false,
@@ -127,3 +129,4 @@ server.listen(PORT, () => {
     console.log(`WebSocket server running on ws://localhost:${PORT}`);
     console.log(`API Documentation: http://localhost:${PORT}`);
 });
+

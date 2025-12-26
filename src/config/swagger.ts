@@ -1,10 +1,11 @@
-const swaggerJsdoc = require('swagger-jsdoc');
+import swaggerJsdoc from 'swagger-jsdoc';
+import { SwaggerDefinition } from 'swagger-jsdoc';
 
-const options = {
+const options: swaggerJsdoc.Options = {
     definition: {
         openapi: '3.0.0',
         info: {
-            title: 'Chatery WhatsApp API',
+            title: 'WhatsBridge API',
             version: '1.0.0',
             description: `
 A powerful WhatsApp API backend built with Express.js and Baileys library.
@@ -28,11 +29,11 @@ A powerful WhatsApp API backend built with Express.js and Baileys library.
 All API endpoints require \`X-Api-Key\` header (if API_KEY is configured in .env).
 
 ## Full Documentation
-- [https://docs.chatery.app](https://docs.chatery.app)
-- [https://chatery-whatsapp-documentation.appwrite.network](https://chatery-whatsapp-documentation.appwrite.network)
+- [https://docs.whatsbridge.app](https://docs.whatsbridge.app)
+- [https://whatsbridge-documentation.appwrite.network](https://whatsbridge-documentation.appwrite.network)
 
 ## ⭐ Support This Project
-- [⭐ Star on GitHub](https://github.com/farinchan/chatery_backend) - Give us a star!
+- [⭐ Star on GitHub](https://github.com/farinchan/whatsbridge) - Give us a star!
 - [☕ Buy Me a Coffee (saweria)](https://saweria.co/fajrichan) - Support the developer
 
             `,
@@ -154,9 +155,10 @@ All API endpoints require \`X-Api-Key\` header (if API_KEY is configured in .env
         },
         security: [{ ApiKeyAuth: [] }]
     },
-    apis: ['./src/config/swagger-paths.js']
+    apis: ['./src/config/swagger-paths.ts']
 };
 
 const swaggerSpec = swaggerJsdoc(options);
 
-module.exports = swaggerSpec;
+export default swaggerSpec;
+

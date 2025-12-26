@@ -318,7 +318,7 @@
  *   post:
  *     tags: [Messaging]
  *     summary: Send text message
- *     description: Send a text message to a chat
+ *     description: "Send a text message to a chat. A whitelabel footer (format: > _footerName_) will be automatically appended if configured. Priority: payload footerName > session metadata > environment variable (MESSAGE_FOOTER)."
  *     requestBody:
  *       required: true
  *       content:
@@ -337,6 +337,10 @@
  *               message:
  *                 type: string
  *                 example: Hello World!
+ *               footerName:
+ *                 type: string
+ *                 description: Optional footer name to override session metadata or env variable
+ *                 example: "My Company"
  *               typingTime:
  *                 type: integer
  *                 example: 2000
@@ -352,7 +356,7 @@
  *   post:
  *     tags: [Messaging]
  *     summary: Send image message
- *     description: Send an image with optional caption
+ *     description: "Send an image with optional caption. A whitelabel footer (format: > _footerName_) will be automatically appended to the caption if configured. Priority: payload footerName > session metadata > environment variable (MESSAGE_FOOTER)."
  *     requestBody:
  *       required: true
  *       content:
@@ -370,6 +374,10 @@
  *                 example: https://example.com/image.jpg
  *               caption:
  *                 type: string
+ *               footerName:
+ *                 type: string
+ *                 description: Optional footer name to override session metadata or env variable
+ *                 example: "My Company"
  *               typingTime:
  *                 type: integer
  *     responses:
@@ -383,7 +391,7 @@
  *   post:
  *     tags: [Messaging]
  *     summary: Send document
- *     description: Send a document/file
+ *     description: "Send a document/file. A whitelabel footer (format: > _footerName_) will be automatically appended to the caption if configured. Priority: payload footerName > session metadata > environment variable (MESSAGE_FOOTER)."
  *     requestBody:
  *       required: true
  *       content:
@@ -405,6 +413,14 @@
  *               mimetype:
  *                 type: string
  *                 example: application/pdf
+ *               caption:
+ *                 type: string
+ *                 description: Optional caption text for the document
+ *                 example: "Please review this document"
+ *               footerName:
+ *                 type: string
+ *                 description: Optional footer name to override session metadata or env variable
+ *                 example: "My Company"
  *               typingTime:
  *                 type: integer
  *     responses:
@@ -418,7 +434,7 @@
  *   post:
  *     tags: [Messaging]
  *     summary: Send location
- *     description: Send a location message
+ *     description: "Send a location message. A whitelabel footer (format: > _footerName_) will be automatically appended to the location name if configured. Priority: payload footerName > session metadata > environment variable (MESSAGE_FOOTER)."
  *     requestBody:
  *       required: true
  *       content:
@@ -440,6 +456,10 @@
  *               name:
  *                 type: string
  *                 example: Jakarta
+ *               footerName:
+ *                 type: string
+ *                 description: Optional footer name to override session metadata or env variable
+ *                 example: "My Company"
  *               typingTime:
  *                 type: integer
  *     responses:
@@ -485,7 +505,7 @@
  *   post:
  *     tags: [Messaging]
  *     summary: Send button message
- *     description: Send a message with interactive buttons
+ *     description: "Send a message with interactive buttons. A whitelabel footer (format: > _footerName_) will be automatically appended to the footer if configured. Priority: payload footerName > session metadata > environment variable (MESSAGE_FOOTER)."
  *     requestBody:
  *       required: true
  *       content:
@@ -503,6 +523,10 @@
  *                 example: Choose an option
  *               footer:
  *                 type: string
+ *               footerName:
+ *                 type: string
+ *                 description: Optional footer name to override session metadata or env variable
+ *                 example: "My Company"
  *               buttons:
  *                 type: array
  *                 items:

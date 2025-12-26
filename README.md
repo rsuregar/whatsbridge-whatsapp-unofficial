@@ -1,6 +1,6 @@
-# 🚀 Chatery WhatsApp API
+# 🚀 WhatsBridge - WhatsApp API Gateway
 
-![Chatery](https://sgp.cloud.appwrite.io/v1/storage/buckets/6941a5b70012d918c7aa/files/6941a69000028dec52d2/view?project=694019b0000abc694483&token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbklkIjoiNjk0MWE4NjRjZGNhZGUxOTZmNTMiLCJyZXNvdXJjZUlkIjoiNjk0MWE1YjcwMDEyZDkxOGM3YWE6Njk0MWE2OTAwMDAyOGRlYzUyZDIiLCJyZXNvdXJjZVR5cGUiOiJmaWxlcyIsInJlc291cmNlSW50ZXJuYWxJZCI6IjE0NTE6MSIsImlhdCI6MTc2NTkxMDYyOH0.6DyBMKwzA6x__pQZn3vICDLdBfo0mEUlyMVAc3qEnyo)
+![WhatsBridge](https://sgp.cloud.appwrite.io/v1/storage/buckets/6941a5b70012d918c7aa/files/6941a69000028dec52d2/view?project=694019b0000abc694483&token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbklkIjoiNjk0MWE4NjRjZGNhZGUxOTZmNTMiLCJyZXNvdXJjZUlkIjoiNjk0MWE1YjcwMDEyZDkxOGM3YWE6Njk0MWE2OTAwMDAyOGRlYzUyZDIiLCJyZXNvdXJjZVR5cGUiOiJmaWxlcyIsInJlc291cmNlSW50ZXJuYWxJZCI6IjE0NTE6MSIsImlhdCI6MTc2NTkxMDYyOH0.6DyBMKwzA6x__pQZn3vICDLdBfo0mEUlyMVAc3qEnyo)
 A powerful WhatsApp API backend built with Express.js and Baileys library. Supports multi-session management, real-time WebSocket events, group management, and media handling.
 
 ![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)
@@ -26,8 +26,8 @@ For complete and detailed documentation, please visit:
 
 | 🌐 Documentation | Link |
 |------------------|------|
-| **Primary Docs** | [https://docs.chatery.app](https://docs.chatery.app/) |
-| **Mirror Docs** | [https://chatery-whatsapp-documentation.appwrite.network](https://chatery-whatsapp-documentation.appwrite.network) |
+| **Primary Docs** | [https://docs.whatsbridge.app](https://docs.whatsbridge.app/) |
+| **Mirror Docs** | [https://whatsbridge-documentation.appwrite.network](https://whatsbridge-documentation.appwrite.network) |
 
 > 📚 The documentation includes complete API reference, examples, troubleshooting guides, and more.
 
@@ -55,8 +55,8 @@ For complete and detailed documentation, please visit:
 
 ```bash
 # Clone the repository
-git clone https://github.com/farinchan/chatery_whatsapp.git
-cd chatery_whatsapp
+git clone https://github.com/farinchan/whatsbridge.git
+cd whatsbridge
 
 # Install dependencies
 npm install
@@ -75,8 +75,8 @@ npm run dev
 
 ```bash
 # Clone the repository
-git clone https://github.com/farinchan/chatery_whatsapp.git
-cd chatery_whatsapp
+git clone https://github.com/farinchan/whatsbridge.git
+cd whatsbridge
 
 # Create environment file
 cp .env.example .env
@@ -107,9 +107,9 @@ The following data is persisted across container restarts:
 
 | Volume | Path | Description |
 |--------|------|-------------|
-| `chatery_sessions` | `/app/sessions` | WhatsApp session data |
-| `chatery_media` | `/app/public/media` | Received media files |
-| `chatery_store` | `/app/store` | Message history store |
+| `whatsbridge_sessions` | `/app/sessions` | WhatsApp session data |
+| `whatsbridge_media` | `/app/public/media` | Received media files |
+| `whatsbridge_store` | `/app/store` | Message history store |
 
 ## ⚙ Configuration
 
@@ -516,7 +516,7 @@ POST /chats/send-button
   "sessionId": "mysession",
   "chatId": "628123456789",
   "text": "Please choose an option:",
-  "footer": "Powered by Chatery",
+  "footer": "Powered by WhatsBridge",
   "buttons": ["Option 1", "Option 2", "Option 3"],
   "typingTime": 2000
 }
@@ -1085,7 +1085,7 @@ All configured webhook endpoints will receive POST requests with this format:
 | Header | Value |
 |--------|-------|
 | `Content-Type` | `application/json` |
-| `X-Webhook-Source` | `chatery-whatsapp-api` |
+| `X-Webhook-Source` | `whatsbridge-api` |
 | `X-Session-Id` | Session ID |
 | `X-Webhook-Event` | Event name |
 
@@ -1124,7 +1124,7 @@ GET /api/websocket/stats
 ## 📁 Project Structure
 
 ```
-chatery_backend/
+whatsbridge/
 ├── index.js                 # Application entry point
 ├── package.json
 ├── .env                     # Environment variables
@@ -1249,11 +1249,11 @@ If you find this project helpful, consider supporting the development:
 </p>
 
 <p align="center">
-  <a href="https://github.com/farinchan/chatery_whatsapp">
-    <img src="https://img.shields.io/github/stars/farinchan/chatery_whatsapp?style=social" alt="GitHub Stars" />
+  <a href="https://github.com/farinchan/whatsbridge">
+    <img src="https://img.shields.io/github/stars/farinchan/whatsbridge?style=social" alt="GitHub Stars" />
   </a>
-  <a href="https://github.com/farinchan/chatery_whatsapp/fork">
-    <img src="https://img.shields.io/github/forks/farinchan/chatery_whatsapp?style=social" alt="GitHub Forks" />
+  <a href="https://github.com/farinchan/whatsbridge/fork">
+    <img src="https://img.shields.io/github/forks/farinchan/whatsbridge?style=social" alt="GitHub Forks" />
   </a>
 </p>
 

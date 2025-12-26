@@ -6,3 +6,15 @@ auth_info/
 sessions/
 public/media/
 n8n-nodes-chatery-whatsapp/
+
+# TypeScript build output
+dist/
+*.tsbuildinfo
+
+# Backup files
+*.js.backup
+*.backup
+
+# Bun
+bun.lockb
+.bun/

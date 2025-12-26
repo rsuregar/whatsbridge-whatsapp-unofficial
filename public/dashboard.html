@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chatery Dashboard - WhatsApp API</title>
+    <title>WhatsBridge Dashboard - WhatsApp API</title>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -751,7 +751,7 @@
     <!-- Header -->
     <header class="header">
         <div class="logo">
-            <div class="logo-text">Chatery<span>API</span></div>
+            <div class="logo-text">WhatsBridge<span>API</span></div>
         </div>
         <div class="header-actions">
             <div class="status-badge">
@@ -949,7 +949,7 @@
                 <a href="https://saweria.co/fajrichan" target="_blank" class="btn btn-donate">
                     ☕ Buy Me a Coffee
                 </a>
-                <a href="https://github.com/farinchan/chatery_whatsapp" target="_blank" class="btn btn-github">
+                <a href="https://github.com/farinchan/whatsbridge" target="_blank" class="btn btn-github">
                     ⭐ Star on GitHub
                 </a>
                 <a href="https://www.linkedin.com/in/fajri-chan" target="_blank" class="btn btn-outline">   
@@ -958,10 +958,10 @@
             </div>
             <div class="footer-credit">
                 Made with ❤️ by <a href="https://github.com/farinchan" target="_blank">Farin Chan</a> | 
-                <strong>Chatery API</strong> - WhatsApp Multi-Session Gateway
+                <strong>WhatsBridge API</strong> - WhatsApp Multi-Session Gateway
             </div>
             <div style="font-size: 12px; color: var(--text-muted);">
-                © 2024 Chatery. Open Source under MIT License.
+                © 2024 WhatsBridge. Open Source under MIT License.
             </div>
         </div>
     </footer>
@@ -1154,7 +1154,7 @@
                         sessionStorage.setItem('api_key', apiKey);
                     }
                     
-                    alert('✅ Login successful! Welcome to Chatery Dashboard.');
+                    alert('✅ Login successful! Welcome to WhatsBridge Dashboard.');
                     return true;
                 } else {
                     alert('❌ ' + data.message);
@@ -1597,19 +1597,21 @@
                 body = { 
                     sessionId: '', 
                     chatId: '628123456789', 
-                    message: 'Hello from Chatery API!',
+                    message: 'Hello from WhatsBridge API!',
+                    footerName: 'My Company',
                     typingTime: 0
                 };
-                helpText = '📝 <code>chatId</code>: Phone number or group ID. <code>typingTime</code>: Typing duration in ms before sending (0 = no typing).';
+                helpText = '📝 <code>chatId</code>: Phone number or group ID. <code>typingTime</code>: Typing duration in ms before sending (0 = no typing).<br>💡 <strong>Whitelabel Footer:</strong> A footer (format: > _footerName_) will be automatically appended. Priority: <code>footerName</code> in payload > session metadata > environment variable (<code>MESSAGE_FOOTER</code>).';
             } else if (path.includes('/chats/send-image')) {
                 body = { 
                     sessionId: '', 
                     chatId: '628123456789', 
                     imageUrl: 'https://example.com/image.jpg', 
                     caption: 'Image caption',
+                    footerName: 'My Company',
                     typingTime: 0
                 };
-                helpText = '🖼️ <code>imageUrl</code>: Direct URL to image. <code>typingTime</code>: Typing duration in ms.';
+                helpText = '🖼️ <code>imageUrl</code>: Direct URL to image. <code>typingTime</code>: Typing duration in ms.<br>💡 <strong>Whitelabel Footer:</strong> A footer (format: > _footerName_) will be automatically appended to the caption. Priority: <code>footerName</code> in payload > session metadata > environment variable (<code>MESSAGE_FOOTER</code>).';
             } else if (path.includes('/chats/send-document')) {
                 body = { 
                     sessionId: '', 
@@ -1617,9 +1619,11 @@
                     documentUrl: 'https://example.com/document.pdf', 
                     filename: 'document.pdf',
                     mimetype: 'application/pdf',
+                    caption: 'Please review this document',
+                    footerName: 'My Company',
                     typingTime: 0
                 };
-                helpText = '📄 <code>mimetype</code>: MIME type. <code>typingTime</code>: Typing duration in ms.';
+                helpText = '📄 <code>mimetype</code>: MIME type. <code>caption</code>: Optional caption text. <code>typingTime</code>: Typing duration in ms.<br>💡 <strong>Whitelabel Footer:</strong> A footer (format: > _footerName_) will be automatically appended to the caption. Priority: <code>footerName</code> in payload > session metadata > environment variable (<code>MESSAGE_FOOTER</code>).';
             } else if (path.includes('/chats/send-location')) {
                 body = { 
                     sessionId: '', 
@@ -1627,9 +1631,10 @@
                     latitude: -6.2088,
                     longitude: 106.8456,
                     name: 'Jakarta, Indonesia',
+                    footerName: 'My Company',
                     typingTime: 0
                 };
-                helpText = '📍 GPS coordinates. <code>typingTime</code>: Typing duration in ms.';
+                helpText = '📍 GPS coordinates. <code>typingTime</code>: Typing duration in ms.<br>💡 <strong>Whitelabel Footer:</strong> A footer (format: > _footerName_) will be automatically appended to the location name. Priority: <code>footerName</code> in payload > session metadata > environment variable (<code>MESSAGE_FOOTER</code>).';
             } else if (path.includes('/chats/send-contact')) {
                 body = { 
                     sessionId: '', 
@@ -1644,11 +1649,12 @@
                     sessionId: '', 
                     chatId: '628123456789', 
                     text: 'Please choose an option:',
-                    footer: 'Powered by Chatery',
+                    footer: 'Powered by WhatsBridge',
+                    footerName: 'My Company',
                     buttons: ['Option 1', 'Option 2', 'Option 3'],
                     typingTime: 0
                 };
-                helpText = '🔘 <code>buttons</code>: Max 3 buttons. <code>typingTime</code>: Typing duration in ms.';
+                helpText = '🔘 <code>buttons</code>: Max 3 buttons. <code>typingTime</code>: Typing duration in ms.<br>💡 <strong>Whitelabel Footer:</strong> A footer (format: > _footerName_) will be automatically appended to the footer. Priority: <code>footerName</code> in payload > session metadata > environment variable (<code>MESSAGE_FOOTER</code>).';
             } else if (path.includes('/chats/presence')) {
                 body = { 
                     sessionId: '', 

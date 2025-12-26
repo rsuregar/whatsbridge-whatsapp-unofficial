@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  chatery:
+  whatsbridge:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: chatery-whatsapp-api
+    container_name: whatsbridge-api
     restart: unless-stopped
     ports:
       - "${PORT:-3000}:3000"
@@ -18,11 +18,11 @@ services:
       - API_KEY=${API_KEY:-}
     volumes:
       # Persist WhatsApp sessions
-      - chatery_sessions:/app/sessions
+      - whatsbridge_sessions:/app/sessions
       # Persist received media files
-      - chatery_media:/app/public/media
+      - whatsbridge_media:/app/public/media
       # Persist message store
-      - chatery_store:/app/store
+      - whatsbridge_store:/app/store
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
       interval: 30s
@@ -35,16 +35,16 @@ services:
         max-size: "10m"
         max-file: "3"
     networks:
-      - chatery-network
+      - whatsbridge-network
 
 volumes:
-  chatery_sessions:
+  whatsbridge_sessions:
     driver: local
-  chatery_media:
+  whatsbridge_media:
     driver: local
-  chatery_store:
+  whatsbridge_store:
     driver: local
 
 networks:
-  chatery-network:
+  whatsbridge-network:
     driver: bridge

@@ -1,12 +1,16 @@
-const path = require('path');
-const fs = require('fs');
-const WhatsAppSession = require('./WhatsAppSession');
+import path from 'path';
+import fs from 'fs';
+import WhatsAppSession from './WhatsAppSession';
+import { SessionOptions, SessionInfo, ApiResponse } from '../../types';
 
 /**
  * WhatsApp Manager Class
  * Mengelola semua sesi WhatsApp (Singleton)
  */
 class WhatsAppManager {
+    private sessions: Map<string, WhatsAppSession>;
+    private sessionsFolder: string;
+
     constructor() {
         this.sessions = new Map();
         this.sessionsFolder = path.join(process.cwd(), 'sessions');
@@ -16,7 +20,7 @@ class WhatsAppManager {
     /**
      * Load existing sessions on startup
      */
-    async initExistingSessions() {
+    async initExistingSessions(): Promise<void> {
         try {
             if (!fs.existsSync(this.sessionsFolder)) {
                 fs.mkdirSync(this.sessionsFolder, { recursive: true });
@@ -41,13 +45,11 @@ class WhatsAppManager {
 
     /**
      * Create a new session or reconnect existing
-     * @param {string} sessionId - Session identifier
-     * @param {Object} options - Session options
-     * @param {Object} options.metadata - Custom metadata to store with session
-     * @param {Array} options.webhooks - Array of webhook configs [{ url, events }]
-     * @returns {Object}
+     * @param sessionId - Session identifier
+     * @param options - Session options
+     * @returns ApiResponse with session info
      */
-    async createSession(sessionId, options = {}) {
+    async createSession(sessionId: string, options: SessionOptions = {}): Promise<ApiResponse<SessionInfo>> {
         // Validate session ID
         if (!sessionId || !/^[a-zA-Z0-9_-]+$/.test(sessionId)) {
             return { 
@@ -58,7 +60,7 @@ class WhatsAppManager {
 
         // Check if session already exists
         if (this.sessions.has(sessionId)) {
-            const existingSession = this.sessions.get(sessionId);
+            const existingSession = this.sessions.get(sessionId)!;
             
             // Update config if provided
             if (options.metadata || options.webhooks) {
@@ -96,19 +98,19 @@ class WhatsAppManager {
 
     /**
      * Get session by ID
-     * @param {string} sessionId 
-     * @returns {WhatsAppSession|undefined}
+     * @param sessionId 
+     * @returns WhatsAppSession or undefined
      */
-    getSession(sessionId) {
+    getSession(sessionId: string): WhatsAppSession | undefined {
         return this.sessions.get(sessionId);
     }
 
     /**
      * Get all sessions info
-     * @returns {Array}
+     * @returns Array of session info
      */
-    getAllSessions() {
-        const sessionsInfo = [];
+    getAllSessions(): SessionInfo[] {
+        const sessionsInfo: SessionInfo[] = [];
         for (const [sessionId, session] of this.sessions) {
             sessionsInfo.push(session.getInfo());
         }
@@ -117,10 +119,10 @@ class WhatsAppManager {
 
     /**
      * Delete a session
-     * @param {string} sessionId 
-     * @returns {Object}
+     * @param sessionId 
+     * @returns ApiResponse
      */
-    async deleteSession(sessionId) {
+    async deleteSession(sessionId: string): Promise<ApiResponse> {
         const session = this.sessions.get(sessionId);
         if (!session) {
             return { success: false, message: 'Session not found' };
@@ -133,10 +135,10 @@ class WhatsAppManager {
 
     /**
      * Get session QR code info
-     * @param {string} sessionId 
-     * @returns {Object|null}
+     * @param sessionId 
+     * @returns SessionInfo or null
      */
-    getSessionQR(sessionId) {
+    getSessionQR(sessionId: string): SessionInfo | null {
         const session = this.sessions.get(sessionId);
         if (!session) {
             return null;
@@ -145,4 +147,5 @@ class WhatsAppManager {
     }
 }
 
-module.exports = WhatsAppManager;
+export default WhatsAppManager;
+

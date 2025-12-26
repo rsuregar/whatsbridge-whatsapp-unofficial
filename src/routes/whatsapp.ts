@@ -1,9 +1,11 @@
-const express = require('express');
+import express, { Request, Response, NextFunction } from 'express';
+import whatsappManager from '../services/whatsapp';
+import { SessionOptions } from '../types';
+
 const router = express.Router();
-const whatsappManager = require('../services/whatsapp');
 
 // Get all sessions
-router.get('/sessions', (req, res) => {
+router.get('/sessions', (req: Request, res: Response) => {
     try {
         const sessions = whatsappManager.getAllSessions();
         res.json({
@@ -17,7 +19,7 @@ router.get('/sessions', (req, res) => {
                 name: s.name
             }))
         });
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -26,12 +28,12 @@ router.get('/sessions', (req, res) => {
 });
 
 // Create/Connect a session
-router.post('/sessions/:sessionId/connect', async (req, res) => {
+router.post('/sessions/:sessionId/connect', async (req: Request, res: Response) => {
     try {
         const { sessionId } = req.params;
         const { metadata, webhooks } = req.body;
         
-        const options = {};
+        const options: SessionOptions = {};
         if (metadata) options.metadata = metadata;
         if (webhooks) options.webhooks = webhooks;
         
@@ -42,7 +44,7 @@ router.post('/sessions/:sessionId/connect', async (req, res) => {
             message: result.message,
             data: result.data
         });
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -51,7 +53,7 @@ router.post('/sessions/:sessionId/connect', async (req, res) => {
 });
 
 // Get session status
-router.get('/sessions/:sessionId/status', (req, res) => {
+router.get('/sessions/:sessionId/status', (req: Request, res: Response) => {
     try {
         const { sessionId } = req.params;
         const session = whatsappManager.getSession(sessionId);
@@ -77,7 +79,7 @@ router.get('/sessions/:sessionId/status', (req, res) => {
                 webhooks: info.webhooks
             }
         });
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -86,7 +88,7 @@ router.get('/sessions/:sessionId/status', (req, res) => {
 });
 
 // Update session config (metadata, webhooks)
-router.patch('/sessions/:sessionId/config', (req, res) => {
+router.patch('/sessions/:sessionId/config', (req: Request, res: Response) => {
     try {
         const { sessionId } = req.params;
         const { metadata, webhooks } = req.body;
@@ -100,7 +102,7 @@ router.patch('/sessions/:sessionId/config', (req, res) => {
             });
         }
         
-        const options = {};
+        const options: SessionOptions = {};
         if (metadata !== undefined) options.metadata = metadata;
         if (webhooks !== undefined) options.webhooks = webhooks;
         
@@ -115,7 +117,7 @@ router.patch('/sessions/:sessionId/config', (req, res) => {
                 webhooks: updatedInfo.webhooks
             }
         });
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -124,7 +126,7 @@ router.patch('/sessions/:sessionId/config', (req, res) => {
 });
 
 // Add a webhook to session
-router.post('/sessions/:sessionId/webhooks', (req, res) => {
+router.post('/sessions/:sessionId/webhooks', (req: Request, res: Response) => {
     try {
         const { sessionId } = req.params;
         const { url, events } = req.body;
@@ -155,7 +157,7 @@ router.post('/sessions/:sessionId/webhooks', (req, res) => {
                 webhooks: updatedInfo.webhooks
             }
         });
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -164,7 +166,7 @@ router.post('/sessions/:sessionId/webhooks', (req, res) => {
 });
 
 // Remove a webhook from session
-router.delete('/sessions/:sessionId/webhooks', (req, res) => {
+router.delete('/sessions/:sessionId/webhooks', (req: Request, res: Response) => {
     try {
         const { sessionId } = req.params;
         const { url } = req.body;
@@ -195,7 +197,7 @@ router.delete('/sessions/:sessionId/webhooks', (req, res) => {
                 webhooks: updatedInfo.webhooks
             }
         });
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -204,7 +206,7 @@ router.delete('/sessions/:sessionId/webhooks', (req, res) => {
 });
 
 // Get QR Code for session
-router.get('/sessions/:sessionId/qr', (req, res) => {
+router.get('/sessions/:sessionId/qr', (req: Request, res: Response) => {
     try {
         const { sessionId } = req.params;
         const sessionInfo = whatsappManager.getSessionQR(sessionId);
@@ -245,7 +247,7 @@ router.get('/sessions/:sessionId/qr', (req, res) => {
                 status: sessionInfo.status
             }
         });
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -254,7 +256,7 @@ router.get('/sessions/:sessionId/qr', (req, res) => {
 });
 
 // Get QR Code as Image for session
-router.get('/sessions/:sessionId/qr/image', (req, res) => {
+router.get('/sessions/:sessionId/qr/image', (req: Request, res: Response) => {
     try {
         const { sessionId } = req.params;
         const sessionInfo = whatsappManager.getSessionQR(sessionId);
@@ -269,13 +271,13 @@ router.get('/sessions/:sessionId/qr/image', (req, res) => {
         
         res.set('Content-Type', 'image/png');
         res.send(imgBuffer);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).send('Error generating QR image');
     }
 });
 
 // Delete/Logout a session
-router.delete('/sessions/:sessionId', async (req, res) => {
+router.delete('/sessions/:sessionId', async (req: Request, res: Response) => {
     try {
         const { sessionId } = req.params;
         const result = await whatsappManager.deleteSession(sessionId);
@@ -284,7 +286,7 @@ router.delete('/sessions/:sessionId', async (req, res) => {
             success: result.success,
             message: result.message
         });
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -295,37 +297,41 @@ router.delete('/sessions/:sessionId', async (req, res) => {
 // ==================== CHAT API ====================
 
 // Middleware untuk check session dari body
-const checkSession = (req, res, next) => {
+const checkSession = (req: Request, res: Response, next: NextFunction): void => {
     if (!req.body) {
-        return res.status(400).json({
+        res.status(400).json({
             success: false,
             message: 'Request body is required'
         });
+        return;
     }
     
     const { sessionId } = req.body;
     
     if (!sessionId) {
-        return res.status(400).json({
+        res.status(400).json({
             success: false,
             message: 'Missing required field: sessionId'
         });
+        return;
     }
     
     const session = whatsappManager.getSession(sessionId);
     
     if (!session) {
-        return res.status(404).json({
+        res.status(404).json({
             success: false,
             message: 'Session not found'
         });
+        return;
     }
     
     if (session.connectionStatus !== 'connected') {
-        return res.status(400).json({
+        res.status(400).json({
             success: false,
             message: 'Session not connected. Please scan QR code first.'
         });
+        return;
     }
     
     req.session = session;
@@ -333,9 +339,9 @@ const checkSession = (req, res, next) => {
 };
 
 // Send text message
-router.post('/chats/send-text', checkSession, async (req, res) => {
+router.post('/chats/send-text', checkSession, async (req: Request, res: Response) => {
     try {
-        const { chatId, message, typingTime = 0 } = req.body;
+        const { chatId, message, typingTime = 0, footerName } = req.body;
         
         if (!chatId || !message) {
             return res.status(400).json({
@@ -344,9 +350,9 @@ router.post('/chats/send-text', checkSession, async (req, res) => {
             });
         }
 
-        const result = await req.session.sendTextMessage(chatId, message, typingTime);
+        const result = await req.session!.sendTextMessage(chatId, message, typingTime, footerName || null);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -355,9 +361,9 @@ router.post('/chats/send-text', checkSession, async (req, res) => {
 });
 
 // Send image
-router.post('/chats/send-image', checkSession, async (req, res) => {
+router.post('/chats/send-image', checkSession, async (req: Request, res: Response) => {
     try {
-        const { chatId, imageUrl, caption, typingTime = 0 } = req.body;
+        const { chatId, imageUrl, caption, typingTime = 0, footerName } = req.body;
         
         if (!chatId || !imageUrl) {
             return res.status(400).json({
@@ -366,9 +372,9 @@ router.post('/chats/send-image', checkSession, async (req, res) => {
             });
         }
 
-        const result = await req.session.sendImage(chatId, imageUrl, caption || '', typingTime);
+        const result = await req.session!.sendImage(chatId, imageUrl, caption || '', typingTime, footerName || null);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -377,9 +383,9 @@ router.post('/chats/send-image', checkSession, async (req, res) => {
 });
 
 // Send document
-router.post('/chats/send-document', checkSession, async (req, res) => {
+router.post('/chats/send-document', checkSession, async (req: Request, res: Response) => {
     try {
-        const { chatId, documentUrl, filename, mimetype, typingTime = 0 } = req.body;
+        const { chatId, documentUrl, filename, mimetype, caption, typingTime = 0, footerName } = req.body;
         
         if (!chatId || !documentUrl || !filename) {
             return res.status(400).json({
@@ -388,9 +394,9 @@ router.post('/chats/send-document', checkSession, async (req, res) => {
             });
         }
 
-        const result = await req.session.sendDocument(chatId, documentUrl, filename, mimetype, typingTime);
+        const result = await req.session!.sendDocument(chatId, documentUrl, filename, mimetype, caption || '', typingTime, footerName || null);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -399,9 +405,9 @@ router.post('/chats/send-document', checkSession, async (req, res) => {
 });
 
 // Send location
-router.post('/chats/send-location', checkSession, async (req, res) => {
+router.post('/chats/send-location', checkSession, async (req: Request, res: Response) => {
     try {
-        const { chatId, latitude, longitude, name, typingTime = 0 } = req.body;
+        const { chatId, latitude, longitude, name, typingTime = 0, footerName } = req.body;
         
         if (!chatId || latitude === undefined || longitude === undefined) {
             return res.status(400).json({
@@ -410,9 +416,9 @@ router.post('/chats/send-location', checkSession, async (req, res) => {
             });
         }
 
-        const result = await req.session.sendLocation(chatId, latitude, longitude, name || '', typingTime);
+        const result = await req.session!.sendLocation(chatId, latitude, longitude, name || '', typingTime, footerName || null);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -421,7 +427,7 @@ router.post('/chats/send-location', checkSession, async (req, res) => {
 });
 
 // Send contact
-router.post('/chats/send-contact', checkSession, async (req, res) => {
+router.post('/chats/send-contact', checkSession, async (req: Request, res: Response) => {
     try {
         const { chatId, contactName, contactPhone, typingTime = 0 } = req.body;
         
@@ -432,9 +438,9 @@ router.post('/chats/send-contact', checkSession, async (req, res) => {
             });
         }
 
-        const result = await req.session.sendContact(chatId, contactName, contactPhone, typingTime);
+        const result = await req.session!.sendContact(chatId, contactName, contactPhone, typingTime);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -443,9 +449,9 @@ router.post('/chats/send-contact', checkSession, async (req, res) => {
 });
 
 // Send button message
-router.post('/chats/send-button', checkSession, async (req, res) => {
+router.post('/chats/send-button', checkSession, async (req: Request, res: Response) => {
     try {
-        const { chatId, text, footer, buttons, typingTime = 0 } = req.body;
+        const { chatId, text, footer, buttons, typingTime = 0, footerName } = req.body;
         
         if (!chatId || !text || !buttons || !Array.isArray(buttons)) {
             return res.status(400).json({
@@ -454,9 +460,9 @@ router.post('/chats/send-button', checkSession, async (req, res) => {
             });
         }
 
-        const result = await req.session.sendButton(chatId, text, footer || '', buttons, typingTime);
+        const result = await req.session!.sendButton(chatId, text, footer || '', buttons, typingTime, footerName || null);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -465,7 +471,7 @@ router.post('/chats/send-button', checkSession, async (req, res) => {
 });
 
 // Send presence update (typing indicator)
-router.post('/chats/presence', checkSession, async (req, res) => {
+router.post('/chats/presence', checkSession, async (req: Request, res: Response) => {
     try {
         const { chatId, presence = 'composing' } = req.body;
         
@@ -484,9 +490,9 @@ router.post('/chats/presence', checkSession, async (req, res) => {
             });
         }
         
-        const result = await req.session.sendPresenceUpdate(chatId, presence);
+        const result = await req.session!.sendPresenceUpdate(chatId, presence);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -495,7 +501,7 @@ router.post('/chats/presence', checkSession, async (req, res) => {
 });
 
 // Check if number is registered on WhatsApp
-router.post('/chats/check-number', checkSession, async (req, res) => {
+router.post('/chats/check-number', checkSession, async (req: Request, res: Response) => {
     try {
         const { phone } = req.body;
         
@@ -506,9 +512,9 @@ router.post('/chats/check-number', checkSession, async (req, res) => {
             });
         }
         
-        const result = await req.session.isRegistered(phone);
+        const result = await req.session!.isRegistered(phone);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -517,7 +523,7 @@ router.post('/chats/check-number', checkSession, async (req, res) => {
 });
 
 // Get profile picture
-router.post('/chats/profile-picture', checkSession, async (req, res) => {
+router.post('/chats/profile-picture', checkSession, async (req: Request, res: Response) => {
     try {
         const { phone } = req.body;
         
@@ -528,9 +534,9 @@ router.post('/chats/profile-picture', checkSession, async (req, res) => {
             });
         }
         
-        const result = await req.session.getProfilePicture(phone);
+        const result = await req.session!.getProfilePicture(phone);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -545,12 +551,12 @@ router.post('/chats/profile-picture', checkSession, async (req, res) => {
  * Body: { sessionId, limit?, offset?, type? }
  * type: 'all' | 'personal' | 'group'
  */
-router.post('/chats/overview', checkSession, async (req, res) => {
+router.post('/chats/overview', checkSession, async (req: Request, res: Response) => {
     try {
         const { limit = 50, offset = 0, type = 'all' } = req.body;
-        const result = await req.session.getChatsOverview(limit, offset, type);
+        const result = await req.session!.getChatsOverview(limit, offset, type);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -562,12 +568,12 @@ router.post('/chats/overview', checkSession, async (req, res) => {
  * Get contacts list - semua kontak yang tersimpan
  * Body: { sessionId, limit?, offset?, search? }
  */
-router.post('/contacts', checkSession, async (req, res) => {
+router.post('/contacts', checkSession, async (req: Request, res: Response) => {
     try {
         const { limit = 100, offset = 0, search = '' } = req.body;
-        const result = await req.session.getContacts(limit, offset, search);
+        const result = await req.session!.getContacts(limit, offset, search);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -580,7 +586,7 @@ router.post('/contacts', checkSession, async (req, res) => {
  * Body: { sessionId, chatId, limit?, cursor? }
  * chatId: phone number (628xxx) or group id (xxx@g.us)
  */
-router.post('/chats/messages', checkSession, async (req, res) => {
+router.post('/chats/messages', checkSession, async (req: Request, res: Response) => {
     try {
         const { chatId, limit = 50, cursor = null } = req.body;
         
@@ -591,9 +597,9 @@ router.post('/chats/messages', checkSession, async (req, res) => {
             });
         }
         
-        const result = await req.session.getChatMessages(chatId, limit, cursor);
+        const result = await req.session!.getChatMessages(chatId, limit, cursor);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -605,7 +611,7 @@ router.post('/chats/messages', checkSession, async (req, res) => {
  * Get chat info/detail (personal or group)
  * Body: { sessionId, chatId }
  */
-router.post('/chats/info', checkSession, async (req, res) => {
+router.post('/chats/info', checkSession, async (req: Request, res: Response) => {
     try {
         const { chatId } = req.body;
         
@@ -616,9 +622,9 @@ router.post('/chats/info', checkSession, async (req, res) => {
             });
         }
         
-        const result = await req.session.getChatInfo(chatId);
+        const result = await req.session!.getChatInfo(chatId);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -630,7 +636,7 @@ router.post('/chats/info', checkSession, async (req, res) => {
  * Mark a chat as read
  * Body: { sessionId, chatId, messageId? }
  */
-router.post('/chats/mark-read', checkSession, async (req, res) => {
+router.post('/chats/mark-read', checkSession, async (req: Request, res: Response) => {
     try {
         const { chatId, messageId } = req.body;
         
@@ -641,9 +647,9 @@ router.post('/chats/mark-read', checkSession, async (req, res) => {
             });
         }
         
-        const result = await req.session.markChatRead(chatId, messageId);
+        const result = await req.session!.markChatRead(chatId, messageId);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -657,7 +663,7 @@ router.post('/chats/mark-read', checkSession, async (req, res) => {
  * Create a new group
  * Body: { sessionId, name, participants: ['628xxx', '628yyy'] }
  */
-router.post('/groups/create', checkSession, async (req, res) => {
+router.post('/groups/create', checkSession, async (req: Request, res: Response) => {
     try {
         const { name, participants } = req.body;
         
@@ -668,9 +674,9 @@ router.post('/groups/create', checkSession, async (req, res) => {
             });
         }
         
-        const result = await req.session.createGroup(name, participants);
+        const result = await req.session!.createGroup(name, participants);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -682,11 +688,11 @@ router.post('/groups/create', checkSession, async (req, res) => {
  * Get all participating groups
  * Body: { sessionId }
  */
-router.post('/groups', checkSession, async (req, res) => {
+router.post('/groups', checkSession, async (req: Request, res: Response) => {
     try {
-        const result = await req.session.getAllGroups();
+        const result = await req.session!.getAllGroups();
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -698,7 +704,7 @@ router.post('/groups', checkSession, async (req, res) => {
  * Get group metadata
  * Body: { sessionId, groupId }
  */
-router.post('/groups/metadata', checkSession, async (req, res) => {
+router.post('/groups/metadata', checkSession, async (req: Request, res: Response) => {
     try {
         const { groupId } = req.body;
         
@@ -709,9 +715,9 @@ router.post('/groups/metadata', checkSession, async (req, res) => {
             });
         }
         
-        const result = await req.session.groupGetMetadata(groupId);
+        const result = await req.session!.groupGetMetadata(groupId);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -723,7 +729,7 @@ router.post('/groups/metadata', checkSession, async (req, res) => {
  * Add participants to a group
  * Body: { sessionId, groupId, participants: ['628xxx', '628yyy'] }
  */
-router.post('/groups/participants/add', checkSession, async (req, res) => {
+router.post('/groups/participants/add', checkSession, async (req: Request, res: Response) => {
     try {
         const { groupId, participants } = req.body;
         
@@ -734,9 +740,9 @@ router.post('/groups/participants/add', checkSession, async (req, res) => {
             });
         }
         
-        const result = await req.session.groupAddParticipants(groupId, participants);
+        const result = await req.session!.groupAddParticipants(groupId, participants);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -748,7 +754,7 @@ router.post('/groups/participants/add', checkSession, async (req, res) => {
  * Remove participants from a group
  * Body: { sessionId, groupId, participants: ['628xxx', '628yyy'] }
  */
-router.post('/groups/participants/remove', checkSession, async (req, res) => {
+router.post('/groups/participants/remove', checkSession, async (req: Request, res: Response) => {
     try {
         const { groupId, participants } = req.body;
         
@@ -759,9 +765,9 @@ router.post('/groups/participants/remove', checkSession, async (req, res) => {
             });
         }
         
-        const result = await req.session.groupRemoveParticipants(groupId, participants);
+        const result = await req.session!.groupRemoveParticipants(groupId, participants);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -773,7 +779,7 @@ router.post('/groups/participants/remove', checkSession, async (req, res) => {
  * Promote participants to admin
  * Body: { sessionId, groupId, participants: ['628xxx', '628yyy'] }
  */
-router.post('/groups/participants/promote', checkSession, async (req, res) => {
+router.post('/groups/participants/promote', checkSession, async (req: Request, res: Response) => {
     try {
         const { groupId, participants } = req.body;
         
@@ -784,9 +790,9 @@ router.post('/groups/participants/promote', checkSession, async (req, res) => {
             });
         }
         
-        const result = await req.session.groupPromoteParticipants(groupId, participants);
+        const result = await req.session!.groupPromoteParticipants(groupId, participants);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -798,7 +804,7 @@ router.post('/groups/participants/promote', checkSession, async (req, res) => {
  * Demote participants from admin
  * Body: { sessionId, groupId, participants: ['628xxx', '628yyy'] }
  */
-router.post('/groups/participants/demote', checkSession, async (req, res) => {
+router.post('/groups/participants/demote', checkSession, async (req: Request, res: Response) => {
     try {
         const { groupId, participants } = req.body;
         
@@ -809,9 +815,9 @@ router.post('/groups/participants/demote', checkSession, async (req, res) => {
             });
         }
         
-        const result = await req.session.groupDemoteParticipants(groupId, participants);
+        const result = await req.session!.groupDemoteParticipants(groupId, participants);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -823,7 +829,7 @@ router.post('/groups/participants/demote', checkSession, async (req, res) => {
  * Update group subject (name)
  * Body: { sessionId, groupId, subject }
  */
-router.post('/groups/subject', checkSession, async (req, res) => {
+router.post('/groups/subject', checkSession, async (req: Request, res: Response) => {
     try {
         const { groupId, subject } = req.body;
         
@@ -834,9 +840,9 @@ router.post('/groups/subject', checkSession, async (req, res) => {
             });
         }
         
-        const result = await req.session.groupUpdateSubject(groupId, subject);
+        const result = await req.session!.groupUpdateSubject(groupId, subject);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -848,7 +854,7 @@ router.post('/groups/subject', checkSession, async (req, res) => {
  * Update group description
  * Body: { sessionId, groupId, description }
  */
-router.post('/groups/description', checkSession, async (req, res) => {
+router.post('/groups/description', checkSession, async (req: Request, res: Response) => {
     try {
         const { groupId, description } = req.body;
         
@@ -859,9 +865,9 @@ router.post('/groups/description', checkSession, async (req, res) => {
             });
         }
         
-        const result = await req.session.groupUpdateDescription(groupId, description);
+        const result = await req.session!.groupUpdateDescription(groupId, description);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -873,7 +879,7 @@ router.post('/groups/description', checkSession, async (req, res) => {
  * Update group settings
  * Body: { sessionId, groupId, setting: 'announcement'|'not_announcement'|'locked'|'unlocked' }
  */
-router.post('/groups/settings', checkSession, async (req, res) => {
+router.post('/groups/settings', checkSession, async (req: Request, res: Response) => {
     try {
         const { groupId, setting } = req.body;
         
@@ -884,9 +890,9 @@ router.post('/groups/settings', checkSession, async (req, res) => {
             });
         }
         
-        const result = await req.session.groupUpdateSettings(groupId, setting);
+        const result = await req.session!.groupUpdateSettings(groupId, setting);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -898,7 +904,7 @@ router.post('/groups/settings', checkSession, async (req, res) => {
  * Update group profile picture
  * Body: { sessionId, groupId, imageUrl }
  */
-router.post('/groups/picture', checkSession, async (req, res) => {
+router.post('/groups/picture', checkSession, async (req: Request, res: Response) => {
     try {
         const { groupId, imageUrl } = req.body;
         
@@ -909,9 +915,9 @@ router.post('/groups/picture', checkSession, async (req, res) => {
             });
         }
         
-        const result = await req.session.groupUpdateProfilePicture(groupId, imageUrl);
+        const result = await req.session!.groupUpdateProfilePicture(groupId, imageUrl);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -923,7 +929,7 @@ router.post('/groups/picture', checkSession, async (req, res) => {
  * Leave a group
  * Body: { sessionId, groupId }
  */
-router.post('/groups/leave', checkSession, async (req, res) => {
+router.post('/groups/leave', checkSession, async (req: Request, res: Response) => {
     try {
         const { groupId } = req.body;
         
@@ -934,9 +940,9 @@ router.post('/groups/leave', checkSession, async (req, res) => {
             });
         }
         
-        const result = await req.session.groupLeave(groupId);
+        const result = await req.session!.groupLeave(groupId);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -948,7 +954,7 @@ router.post('/groups/leave', checkSession, async (req, res) => {
  * Join a group using invitation code/link
  * Body: { sessionId, inviteCode } - Can be full URL or just the code
  */
-router.post('/groups/join', checkSession, async (req, res) => {
+router.post('/groups/join', checkSession, async (req: Request, res: Response) => {
     try {
         const { inviteCode } = req.body;
         
@@ -959,9 +965,9 @@ router.post('/groups/join', checkSession, async (req, res) => {
             });
         }
         
-        const result = await req.session.groupJoinByInvite(inviteCode);
+        const result = await req.session!.groupJoinByInvite(inviteCode);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -973,7 +979,7 @@ router.post('/groups/join', checkSession, async (req, res) => {
  * Get group invitation code/link
  * Body: { sessionId, groupId }
  */
-router.post('/groups/invite-code', checkSession, async (req, res) => {
+router.post('/groups/invite-code', checkSession, async (req: Request, res: Response) => {
     try {
         const { groupId } = req.body;
         
@@ -984,9 +990,9 @@ router.post('/groups/invite-code', checkSession, async (req, res) => {
             });
         }
         
-        const result = await req.session.groupGetInviteCode(groupId);
+        const result = await req.session!.groupGetInviteCode(groupId);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -998,7 +1004,7 @@ router.post('/groups/invite-code', checkSession, async (req, res) => {
  * Revoke group invitation code
  * Body: { sessionId, groupId }
  */
-router.post('/groups/revoke-invite', checkSession, async (req, res) => {
+router.post('/groups/revoke-invite', checkSession, async (req: Request, res: Response) => {
     try {
         const { groupId } = req.body;
         
@@ -1009,9 +1015,9 @@ router.post('/groups/revoke-invite', checkSession, async (req, res) => {
             });
         }
         
-        const result = await req.session.groupRevokeInvite(groupId);
+        const result = await req.session!.groupRevokeInvite(groupId);
         res.json(result);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -1019,4 +1025,5 @@ router.post('/groups/revoke-invite', checkSession, async (req, res) => {
     }
 });
 
-module.exports = router;
+export default router;
+
