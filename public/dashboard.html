@@ -1221,8 +1221,13 @@
             
             <div class="form-group" style="text-align: left;">
                 <label class="form-label">Session ID *</label>
-                <input type="text" class="form-input" id="newSessionId" placeholder="e.g. my-session-1" pattern="[a-zA-Z0-9_-]+">
-                <small style="color: var(--text-muted); font-size: 12px;">Only letters, numbers, underscore, and dash allowed</small>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="text" class="form-input" id="newSessionId" placeholder="e.g. my-session-1" pattern="[a-zA-Z0-9_-]+" style="flex: 1;">
+                    <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('newSessionId').value = generateSessionId()" title="Generate new ID" style="white-space: nowrap;">
+                        🔄 Generate
+                    </button>
+                </div>
+                <small style="color: var(--text-muted); font-size: 12px;">Only letters, numbers, underscore, and dash allowed. Auto-generated on open.</small>
             </div>
             
             <div class="form-group" style="text-align: left;">
@@ -1804,7 +1809,19 @@
         }
 
         // Create Session
+        function generateSessionId() {
+            // Generate a random session ID: session-xxxxx format
+            const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+            const randomPart = Array.from({ length: 8 }, () => 
+                chars[Math.floor(Math.random() * chars.length)]
+            ).join('');
+            return `session-${randomPart}`;
+        }
+
         function showCreateSession() {
+            // Auto-generate session ID
+            const autoSessionId = generateSessionId();
+            document.getElementById('newSessionId').value = autoSessionId;
             document.getElementById('createSessionModal').classList.add('active');
             document.getElementById('newSessionId').focus();
         }
