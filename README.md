@@ -1,9 +1,10 @@
 # 🚀 WhatsBridge - WhatsApp API Gateway
 
 ![WhatsBridge](https://sgp.cloud.appwrite.io/v1/storage/buckets/6941a5b70012d918c7aa/files/6941a69000028dec52d2/view?project=694019b0000abc694483&token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbklkIjoiNjk0MWE4NjRjZGNhZGUxOTZmNTMiLCJyZXNvdXJjZUlkIjoiNjk0MWE1YjcwMDEyZDkxOGM3YWE6Njk0MWE2OTAwMDAyOGRlYzUyZDIiLCJyZXNvdXJjZVR5cGUiOiJmaWxlcyIsInJlc291cmNlSW50ZXJuYWxJZCI6IjE0NTE6MSIsImlhdCI6MTc2NTkxMDYyOH0.6DyBMKwzA6x__pQZn3vICDLdBfo0mEUlyMVAc3qEnyo)
-A powerful WhatsApp API backend built with Express.js and Baileys library. Supports multi-session management, real-time WebSocket events, group management, and media handling.
+A powerful WhatsApp API backend built with TypeScript, Express.js, and Baileys library. Supports multi-session management, real-time WebSocket events, group management, and media handling. Powered by Bun for fast performance.
 
-![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.3+-blue.svg)
+![Bun](https://img.shields.io/badge/Bun-1.1+-green.svg)
 ![Express.js](https://img.shields.io/badge/Express.js-5.x-blue.svg)
 ![Baileys](https://img.shields.io/badge/Baileys-7.x-orange.svg)
 ![Socket.IO](https://img.shields.io/badge/Socket.IO-4.x-purple.svg)
@@ -19,6 +20,8 @@ A powerful WhatsApp API backend built with Express.js and Baileys library. Suppo
 - 💾 **Persistent Store** - Message history with optimized caching
 - 🔐 **Session Persistence** - Sessions survive server restarts
 - 🎛️ **Admin Dashboard** - Web-based dashboard with real-time monitoring and API tester
+- 🔑 **API Key Management** - Generate and manage custom API keys from the dashboard
+- 💻 **TypeScript** - Full TypeScript support for type safety and better developer experience
 
 ## 📋 Table of Contents
 
@@ -114,6 +117,9 @@ DASHBOARD_PASSWORD=securepassword123
 
 # API Key Authentication (optional - leave empty or 'your_api_key_here' to disable)
 API_KEY=your_secret_api_key_here
+
+# Whitelabel Footer (optional - footer name for all messages)
+MESSAGE_FOOTER=My Company Name
 ```
 
 ## 🔐 API Key Authentication
@@ -151,16 +157,27 @@ API_KEY=your_api_key_here
 | 401    | Missing X-Api-Key header | API key not provided in request |
 | 403    | Invalid API key          | API key doesn't match           |
 
+### Custom API Key Management
+
+The dashboard includes built-in API key management:
+
+1. **Generate API Keys**: Create custom API keys with `wb_` prefix directly from the dashboard
+2. **Copy to Clipboard**: One-click copy functionality for easy integration
+3. **Set Custom Keys**: Manually set your own API key
+4. **Reset to Default**: Revert to using the default API key from environment variables
+
+Custom API keys are stored in `data/api-keys.json` and validated alongside the environment variable `API_KEY`.
+
 ### Dashboard Integration
 
-When logging into the dashboard, you'll be prompted to enter your API key (optional). This allows the dashboard to make authenticated API calls.
+After logging into the dashboard, you can access the API key management feature from the header. The dashboard will automatically use your configured API key for authenticated API calls.
 
 ## 🚀 Quick Start
 
 1. **Start the server**
 
    ```bash
-   npm start
+   bun start
    ```
 
 2. **Create a session**
@@ -191,7 +208,7 @@ When logging into the dashboard, you'll be prompted to enter your API key (optio
 
 ## 🎛️ Dashboard
 
-Access the admin dashboard at `http://localhost:3000/dashboard`
+Access the admin dashboard at `http://localhost:3000/` (or `http://localhost:3000/dashboard` for backward compatibility)
 
 ### 🔐 Authentication
 
@@ -212,6 +229,7 @@ Dashboard requires login with username and password configured in `.env` file.
 | 📡 **Live Events**        | Real-time WebSocket event viewer with filtering                              |
 | 💬 **Quick Send**         | Send messages quickly to any number                                          |
 | 🧪 **API Tester**         | Test all 30+ API endpoints with pre-filled templates                         |
+| 🔑 **API Key Management** | Generate, copy, and manage custom API keys directly from the dashboard       |
 | 🚪 **Logout**             | Secure logout button in header                                               |
 
 ### 📸 Screenshots
@@ -402,6 +420,8 @@ DELETE /sessions/:sessionId
 
 > **💡 Typing Indicator**: All messaging endpoints support `typingTime` parameter (in milliseconds) to simulate typing before sending the message. This makes the bot appear more human-like.
 
+> **🏷️ Whitelabel Footer**: All messaging endpoints support automatic footer injection. The footer format is `> _footerName_` (markdown blockquote with italic). Configuration priority: `footerName` in request payload > session metadata > `MESSAGE_FOOTER` environment variable. Set `footerName` in the request body to override per-request, or configure it globally via session metadata or environment variable.
+
 #### Send Text Message
 
 ```http
@@ -415,16 +435,18 @@ POST /chats/send-text
   "sessionId": "mysession",
   "chatId": "628123456789",
   "message": "Hello, World!",
+  "footerName": "My Company",
   "typingTime": 2000
 }
 ```
 
-| Parameter    | Type   | Description                                                 |
-| ------------ | ------ | ----------------------------------------------------------- |
-| `sessionId`  | string | Required. Session ID                                        |
-| `chatId`     | string | Required. Phone number (628xxx) or group ID (xxx@g.us)      |
-| `message`    | string | Required. Text message to send                              |
-| `typingTime` | number | Optional. Typing duration in ms before sending (default: 0) |
+| Parameter    | Type   | Description                                                              |
+| ------------ | ------ | ------------------------------------------------------------------------ |
+| `sessionId`  | string | Required. Session ID                                                     |
+| `chatId`     | string | Required. Phone number (628xxx) or group ID (xxx@g.us)                   |
+| `message`    | string | Required. Text message to send                                           |
+| `footerName` | string | Optional. Footer name (overrides metadata/env, format: `> _footerName_`) |
+| `typingTime` | number | Optional. Typing duration in ms before sending (default: 0)              |
 
 #### Send Image
 
@@ -440,6 +462,7 @@ POST /chats/send-image
   "chatId": "628123456789",
   "imageUrl": "https://example.com/image.jpg",
   "caption": "Check this out!",
+  "footerName": "My Company",
   "typingTime": 1500
 }
 ```
@@ -450,6 +473,7 @@ POST /chats/send-image
 | `chatId`     | string | Required. Phone number or group ID           |
 | `imageUrl`   | string | Required. Direct URL to image file           |
 | `caption`    | string | Optional. Image caption                      |
+| `footerName` | string | Optional. Footer name (appended to caption)  |
 | `typingTime` | number | Optional. Typing duration in ms (default: 0) |
 
 #### Send Document
@@ -467,6 +491,7 @@ POST /chats/send-document
   "documentUrl": "https://example.com/document.pdf",
   "filename": "document.pdf",
   "mimetype": "application/pdf",
+  "caption": "Optional document caption",
   "typingTime": 1000
 }
 ```
@@ -478,6 +503,8 @@ POST /chats/send-document
 | `documentUrl` | string | Required. Direct URL to document               |
 | `filename`    | string | Required. Filename to display                  |
 | `mimetype`    | string | Optional. MIME type (default: application/pdf) |
+| `caption`     | string | Optional. Document caption text                |
+| `footerName`  | string | Optional. Footer name (appended to caption)    |
 | `typingTime`  | number | Optional. Typing duration in ms (default: 0)   |
 
 #### Send Location
@@ -1206,10 +1233,13 @@ GET /api/websocket/stats
 
 ```
 whatsbridge/
-├── index.js                 # Application entry point
+├── index.ts                 # Application entry point (TypeScript)
 ├── package.json
+├── tsconfig.json            # TypeScript configuration
 ├── .env                     # Environment variables
 ├── README.md                # Documentation
+├── data/
+│   └── api-keys.json        # Custom API keys storage (auto-generated)
 ├── public/
 │   ├── dashboard.html       # Admin dashboard
 │   ├── websocket-test.html  # WebSocket test page
@@ -1221,17 +1251,27 @@ whatsbridge/
 │       ├── creds.json
 │       └── store.json
 └── src/
+    ├── config/
+    │   ├── swagger.ts        # Swagger/OpenAPI configuration
+    │   └── swagger-paths.ts  # API endpoint documentation
+    ├── middleware/
+    │   └── apiKeyAuth.ts     # API key authentication middleware
     ├── routes/
-    │   └── whatsapp.js      # API routes
-    └── services/
-        ├── websocket/
-        │   └── WebSocketManager.js
-        └── whatsapp/
-            ├── index.js
-            ├── WhatsAppManager.js
-            ├── WhatsAppSession.js
-            ├── BaileysStore.js
-            └── MessageFormatter.js
+    │   └── whatsapp.ts       # API routes
+    ├── services/
+    │   ├── apiKey/
+    │   │   └── ApiKeyService.ts  # API key management service
+    │   ├── websocket/
+    │   │   └── WebSocketManager.ts
+    │   └── whatsapp/
+    │       ├── index.ts
+    │       ├── WhatsAppManager.ts
+    │       ├── WhatsAppSession.ts
+    │       ├── BaileysStore.ts
+    │       └── MessageFormatter.ts
+    └── types/
+        ├── express.d.ts      # Express type extensions
+        └── index.ts          # Shared TypeScript types
 ```
 
 ---
@@ -1317,13 +1357,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🔗 Quick Links
 
-| Resource           | URL                                       |
-| ------------------ | ----------------------------------------- |
-| 🎛️ Dashboard       | http://localhost:3000/dashboard           |
-| 📚 API Base URL    | http://localhost:3000/api/whatsapp        |
-| 🔌 WebSocket Test  | http://localhost:3000/ws-test             |
-| 📊 WebSocket Stats | http://localhost:3000/api/websocket/stats |
-| ❤️ Health Check    | http://localhost:3000/api/health          |
+| Resource             | URL                                       |
+| -------------------- | ----------------------------------------- |
+| 🎛️ Dashboard         | http://localhost:3000/                    |
+| 📚 API Documentation | http://localhost:3000/docs                |
+| 📚 API Base URL      | http://localhost:3000/api/whatsapp        |
+| 🔌 WebSocket Test    | http://localhost:3000/ws-test             |
+| 📊 WebSocket Stats   | http://localhost:3000/api/websocket/stats |
+| ❤️ Health Check      | http://localhost:3000/api/health          |
 
 ---
 
