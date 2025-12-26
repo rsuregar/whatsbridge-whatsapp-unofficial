@@ -36,7 +36,27 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static files from public folder (for media access)
 app.use('/media', express.static(path.join(__dirname, 'public', 'media')));
 
-// Serve Dashboard
+// Swagger UI Options
+const swaggerUiOptions: swaggerUi.SwaggerUiOptions = {
+    customCss: `
+        .swagger-ui .topbar { display: none }
+        .swagger-ui .info { margin: 20px 0 }
+        .swagger-ui .info .title { color: #6366f1 }
+    `,
+    customSiteTitle: 'WhatsBridge API - Documentation',
+    customfavIcon: '/media/favicon.ico'
+};
+
+// API Documentation (Swagger UI) at /docs
+app.use('/docs', swaggerUi.serve);
+app.get('/docs', swaggerUi.setup(swaggerSpec, swaggerUiOptions));
+
+// Serve Dashboard at root
+app.get('/', (req: Request, res: Response) => {
+    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+// Serve Dashboard (also available at /dashboard for backward compatibility)
 app.get('/dashboard', (req: Request, res: Response) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
@@ -45,21 +65,6 @@ app.get('/dashboard', (req: Request, res: Response) => {
 app.get('/ws-test', (req: Request, res: Response) => {
     res.sendFile(path.join(__dirname, 'public', 'websocket-test.html'));
 });
-
-// Swagger UI Options
-const swaggerUiOptions: swaggerUi.SwaggerUiOptions = {
-    customCss: `
-        .swagger-ui .topbar { display: none }
-        .swagger-ui .info { margin: 20px 0 }
-        .swagger-ui .info .title { color: #25D366 }
-    `,
-    customSiteTitle: 'WhatsBridge API - Documentation',
-    customfavIcon: '/media/favicon.ico'
-};
-
-// API Documentation (Swagger UI) at root
-app.use('/', swaggerUi.serve);
-app.get('/', swaggerUi.setup(swaggerSpec, swaggerUiOptions));
 
 // Swagger JSON endpoint
 app.get('/api-docs.json', (req: Request, res: Response) => {
@@ -95,6 +100,52 @@ app.post('/api/dashboard/login', (req: Request, res: Response) => {
     }
 });
 
+// Get default API key from environment (if set)
+app.get('/api/dashboard/api-key', (req: Request, res: Response) => {
+    const defaultApiKey = process.env.API_KEY;
+    
+    res.json({
+        success: true,
+        data: {
+            defaultApiKey: defaultApiKey && defaultApiKey !== '' && defaultApiKey !== 'your_api_key_here' 
+                ? defaultApiKey 
+                : null,
+            hasDefaultKey: defaultApiKey && defaultApiKey !== '' && defaultApiKey !== 'your_api_key_here'
+        }
+    });
+});
+
+// Save custom API key
+app.post('/api/dashboard/api-key', (req: Request, res: Response) => {
+    try {
+        const { apiKey } = req.body;
+        
+        if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '') {
+            return res.status(400).json({
+                success: false,
+                message: 'API key is required'
+            });
+        }
+        
+        const { addApiKey } = require('./src/services/apiKey/ApiKeyService');
+        const result = addApiKey(apiKey.trim());
+        
+        if (result.success) {
+            res.json({
+                success: true,
+                message: 'API key saved successfully'
+            });
+        } else {
+            res.status(400).json(result);
+        }
+    } catch (error: any) {
+        res.status(500).json({
+            success: false,
+            message: error instanceof Error ? error.message : 'Failed to save API key'
+        });
+    }
+});
+
 // WebSocket Stats
 app.get('/api/websocket/stats', (req: Request, res: Response) => {
     res.json({
@@ -125,8 +176,9 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 // Start Server
 server.listen(PORT, () => {
-    console.log(`WhatsBridge API running on http://localhost:${PORT}`);
-    console.log(`WebSocket server running on ws://localhost:${PORT}`);
-    console.log(`API Documentation: http://localhost:${PORT}`);
+    console.log(`✅ WhatsBridge API running on http://localhost:${PORT}`);
+    console.log(`🔌 WebSocket server running on ws://localhost:${PORT}`);
+    console.log(`🎛️  Dashboard: http://localhost:${PORT}`);
+    console.log(`📚 API Documentation: http://localhost:${PORT}/docs`);
 });
 

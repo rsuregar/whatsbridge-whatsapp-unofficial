@@ -26,25 +26,34 @@
   "author": "Fajri Rinaldi Chan",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/farinchan/whatsbridge/issues"
+    "url": "https://github.com/rsuregar/whatsbridge/issues"
   },
-  "homepage": "https://github.com/farinchan/whatsbridge#readme",
+  "homepage": "https://github.com/rsuregar/whatsbridge#readme",
   "dependencies": {
     "@whiskeysockets/baileys": "^7.0.0-rc.9",
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "libsignal": "^2.0.1",
     "pino": "^10.1.0",
     "qrcode": "^1.5.4",
+    "reflect-metadata": "^0.1.13",
     "socket.io": "^4.8.1",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "typeorm": "^0.3.17",
+    "better-sqlite3": "^9.2.2",
+    "mysql2": "^3.6.5",
+    "pg": "^8.11.3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/better-sqlite3": "^7.6.8",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^20.10.6",
+    "@types/pg": "^8.10.9",
     "@types/qrcode": "^1.5.5",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.6",

@@ -14,31 +14,276 @@
         }
 
         :root {
-            --primary: #25D366;
-            --primary-dark: #128C7E;
-            --secondary: #075E54;
-            --bg-dark: #0a0a0a;
-            --bg-card: #141414;
-            --bg-card-hover: #1a1a1a;
-            --border: #2a2a2a;
-            --text: #ffffff;
-            --text-muted: #888888;
-            --danger: #ff4757;
-            --warning: #ffa502;
-            --info: #3498db;
-            --success: #2ed573;
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --secondary: #8b5cf6;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --bg-overlay: rgba(15, 23, 42, 0.8);
+            --border: #334155;
+            --border-light: #475569;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --text-light: #cbd5e1;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --success: #10b981;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg-dark);
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             color: var(--text);
             min-height: 100vh;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Login Screen */
+        .login-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 1;
+            visibility: visible;
+            transition: all 0.3s ease;
+        }
+
+        .login-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .login-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 48px;
+            max-width: 420px;
+            width: 90%;
+            box-shadow: var(--shadow-xl);
+            backdrop-filter: blur(10px);
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-logo {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 16px;
+            box-shadow: 0 8px 16px rgba(99, 102, 241, 0.3);
+        }
+
+        .login-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--text), var(--text-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .login-subtitle {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .login-form {
+            margin-top: 32px;
+        }
+
+        .form-input-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .form-input-icon {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 18px;
+            pointer-events: none;
+        }
+
+        .form-input-with-icon {
+            padding-right: 48px;
+            padding-left: 16px;
+        }
+
+        .login-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .login-error.show {
+            display: block;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+            margin-top: 8px;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .login-divider {
+            display: flex;
+            align-items: center;
+            margin: 24px 0;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .login-divider::before,
+        .login-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .login-divider span {
+            padding: 0 12px;
+        }
+
+        .api-key-section {
+            margin-top: 20px;
+        }
+
+        .api-key-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            font-size: 13px;
+            cursor: pointer;
+            margin-bottom: 12px;
+        }
+
+        .api-key-toggle:hover {
+            color: var(--text);
+        }
+
+        .api-key-input-group {
+            display: none;
+        }
+
+        .api-key-input-group.show {
+            display: block;
+        }
+
+        .login-tab-btn {
+            flex: 1;
+            padding: 10px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .login-tab-btn.active {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+        }
+
+        .login-tab-btn:hover:not(.active) {
+            color: var(--text);
         }
 
         /* Header */
         .header {
-            background: var(--bg-card);
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
             border-bottom: 1px solid var(--border);
             padding: 16px 24px;
             display: flex;
@@ -47,6 +292,7 @@
             position: sticky;
             top: 0;
             z-index: 100;
+            box-shadow: var(--shadow);
         }
 
         .logo {
@@ -67,8 +313,12 @@
         }
 
         .logo-text {
-            font-size: 20px;
+            font-size: 22px;
             font-weight: 700;
+            background: linear-gradient(135deg, var(--text), var(--primary-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .logo-text span {
@@ -121,14 +371,17 @@
         .stat-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 20px;
+            border-radius: 16px;
+            padding: 24px;
             transition: all 0.3s ease;
+            box-shadow: var(--shadow);
         }
 
         .stat-card:hover {
             background: var(--bg-card-hover);
-            border-color: var(--primary);
+            border-color: var(--primary-light);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
         }
 
         .stat-label {
@@ -164,8 +417,14 @@
         .card {
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: 16px;
             overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-lg);
         }
 
         .card-header {
@@ -282,13 +541,14 @@
         }
 
         .btn-primary {
-            background: var(--primary);
-            color: #000;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
         }
 
         .btn-primary:hover {
-            background: var(--primary-dark);
-            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
         }
 
         .btn-outline {
@@ -344,7 +604,7 @@
             padding: 12px 16px;
             background: var(--bg-dark);
             border: 1px solid var(--border);
-            border-radius: 8px;
+            border-radius: 10px;
             color: var(--text);
             font-size: 14px;
             transition: all 0.3s ease;
@@ -353,6 +613,7 @@
         .form-input:focus {
             outline: none;
             border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
         }
 
         .form-input::placeholder {
@@ -366,7 +627,8 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
+            background: var(--bg-overlay);
+            backdrop-filter: blur(4px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -384,13 +646,14 @@
         .modal {
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: 20px;
             padding: 32px;
             max-width: 400px;
             width: 90%;
             text-align: center;
             transform: scale(0.9);
             transition: all 0.3s ease;
+            box-shadow: var(--shadow-xl);
         }
 
         .modal-overlay.active .modal {
@@ -685,69 +948,59 @@
             color: var(--primary);
         }
 
-        /* Footer */
-        .footer {
-            background: var(--bg-card);
-            border-top: 1px solid var(--border);
-            padding: 24px;
-            margin-top: 48px;
-            text-align: center;
-        }
-
-        .footer-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .footer-credit {
-            color: var(--text-muted);
-            font-size: 14px;
-        }
-
-        .footer-credit a {
-            color: var(--primary);
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .footer-credit a:hover {
-            text-decoration: underline;
-        }
-
-        .footer-buttons {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .btn-donate {
-            background: linear-gradient(135deg, #FF6B6B, #FF8E53);
-            color: #fff;
-            font-weight: 600;
-        }
-
-        .btn-donate:hover {
-            background: linear-gradient(135deg, #FF8E53, #FF6B6B);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
-        }
-
-        .btn-github {
-            background: #333;
-            color: #fff;
-        }
-
-        .btn-github:hover {
-            background: #555;
-        }
     </style>
 </head>
 <body>
+    <!-- Login Screen -->
+    <div class="login-screen" id="loginScreen">
+        <div class="login-container">
+            <div class="login-header">
+                <div class="login-logo">💬</div>
+                <h1 class="login-title">WhatsBridge</h1>
+                <p class="login-subtitle">WhatsApp API Dashboard</p>
+            </div>
+            
+            <div class="login-error" id="loginError"></div>
+            
+            <form class="login-form" id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <div class="form-input-group">
+                        <span class="form-input-icon">👤</span>
+                        <input 
+                            type="text" 
+                            class="form-input form-input-with-icon" 
+                            id="loginUsername" 
+                            placeholder="Enter your username"
+                            required
+                            autocomplete="username"
+                        >
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <div class="form-input-group">
+                        <span class="form-input-icon">🔒</span>
+                        <input 
+                            type="password" 
+                            class="form-input form-input-with-icon" 
+                            id="loginPassword" 
+                            placeholder="Enter your password"
+                            required
+                            autocomplete="current-password"
+                        >
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-login" id="loginBtn">
+                    <span id="loginBtnText">Sign In</span>
+                    <div class="spinner" id="loginSpinner" style="display: none; margin-left: 8px;"></div>
+                </button>
+            </form>
+        </div>
+    </div>
+
     <!-- Header -->
     <header class="header">
         <div class="logo">
@@ -758,6 +1011,7 @@
                 <div class="status-dot" id="wsStatus"></div>
                 <span id="wsStatusText">WebSocket Disconnected</span>
             </div>
+            <button onclick="showApiKeyModal()" class="btn btn-outline btn-sm">🔑 API Key</button>
             <a href="/ws-test" class="btn btn-outline btn-sm">WebSocket Tester</a>
             <button onclick="logout()" class="btn btn-danger btn-sm">🚪 Logout</button>
         </div>
@@ -942,30 +1196,6 @@
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="footer-content">
-            <div class="footer-buttons">
-                <a href="https://saweria.co/fajrichan" target="_blank" class="btn btn-donate">
-                    ☕ Buy Me a Coffee
-                </a>
-                <a href="https://github.com/farinchan/whatsbridge" target="_blank" class="btn btn-github">
-                    ⭐ Star on GitHub
-                </a>
-                <a href="https://www.linkedin.com/in/fajri-chan" target="_blank" class="btn btn-outline">   
-                    💼 LinkedIn
-                </a>
-            </div>
-            <div class="footer-credit">
-                Made with ❤️ by <a href="https://github.com/farinchan" target="_blank">Farin Chan</a> | 
-                <strong>WhatsBridge API</strong> - WhatsApp Multi-Session Gateway
-            </div>
-            <div style="font-size: 12px; color: var(--text-muted);">
-                © 2024 WhatsBridge. Open Source under MIT License.
-            </div>
-        </div>
-    </footer>
-
     <!-- QR Modal -->
     <div class="modal-overlay" id="qrModal">
         <div class="modal">
@@ -1112,27 +1342,45 @@
                 isAuthenticated = true;
                 if (storedApiKey) {
                     apiKey = storedApiKey;
+                } else {
+                    // Load default API key from server if not set
+                    loadDefaultApiKey();
                 }
                 return true;
             }
             return false;
         }
 
-        // Login with prompt
-        async function promptLogin() {
-            const username = prompt('🔐 Dashboard Login\n\nUsername:');
-            if (username === null) {
-                alert('❌ Login required to access dashboard');
-                window.location.href = '/';
-                return false;
+        // Load default API key from environment
+        async function loadDefaultApiKey() {
+            try {
+                const response = await fetch('/api/dashboard/api-key');
+                const data = await response.json();
+                if (data.success && data.data.defaultApiKey) {
+                    apiKey = data.data.defaultApiKey;
+                    sessionStorage.setItem('api_key', apiKey);
+                }
+            } catch (error) {
+                console.error('Failed to load default API key:', error);
             }
+        }
+
+        // Handle Login Form Submit
+        async function handleLogin(event) {
+            event.preventDefault();
             
-            const password = prompt('🔑 Password:');
-            if (password === null) {
-                alert('❌ Login required to access dashboard');
-                window.location.href = '/';
-                return false;
-            }
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const errorDiv = document.getElementById('loginError');
+            const loginBtn = document.getElementById('loginBtn');
+            const loginBtnText = document.getElementById('loginBtnText');
+            const loginSpinner = document.getElementById('loginSpinner');
+            
+            // Show loading state
+            loginBtn.disabled = true;
+            loginBtnText.textContent = 'Signing in...';
+            loginSpinner.style.display = 'block';
+            errorDiv.classList.remove('show');
             
             try {
                 const response = await fetch('/api/dashboard/login', {
@@ -1147,53 +1395,251 @@
                     sessionStorage.setItem('dashboard_auth', 'authenticated');
                     isAuthenticated = true;
                     
-                    // Ask for API key (optional)
-                    const inputApiKey = prompt('🔑 API Key (optional - leave blank if not configured):');
-                    if (inputApiKey && inputApiKey.trim()) {
-                        apiKey = inputApiKey.trim();
-                        sessionStorage.setItem('api_key', apiKey);
-                    }
+                    // Load default API key if not set
+                    await loadDefaultApiKey();
                     
-                    alert('✅ Login successful! Welcome to WhatsBridge Dashboard.');
-                    return true;
+                    // Hide login screen
+                    document.getElementById('loginScreen').classList.add('hidden');
+                    
+                    // Initialize dashboard
+                    connectWebSocket();
+                    loadSessions();
+                    loadWsStats();
+                    updateRequestBody();
+                    
+                    // Refresh stats every 30 seconds
+                    setInterval(() => {
+                        loadSessions();
+                        loadWsStats();
+                    }, 30000);
                 } else {
-                    alert('❌ ' + data.message);
-                    return promptLogin(); // Retry
+                    errorDiv.textContent = data.message || 'Invalid credentials';
+                    errorDiv.classList.add('show');
+                    loginBtn.disabled = false;
+                    loginBtnText.textContent = 'Sign In';
+                    loginSpinner.style.display = 'none';
                 }
             } catch (error) {
-                alert('❌ Login failed: ' + error.message);
-                return promptLogin(); // Retry
+                errorDiv.textContent = 'Login failed: ' + error.message;
+                errorDiv.classList.add('show');
+                loginBtn.disabled = false;
+                loginBtnText.textContent = 'Sign In';
+                loginSpinner.style.display = 'none';
             }
         }
 
-        // Logout
+        // Generate a random API key
+        function generateApiKey() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = 'wb_';
+            for (let i = 0; i < 32; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        // Show API Key Modal
+        async function showApiKeyModal() {
+            // Get default API key status
+            let defaultApiKey = null;
+            let hasDefaultKey = false;
+            try {
+                const response = await fetch('/api/dashboard/api-key');
+                const data = await response.json();
+                if (data.success) {
+                    defaultApiKey = data.data.defaultApiKey;
+                    hasDefaultKey = data.data.hasDefaultKey;
+                }
+            } catch (error) {
+                console.error('Failed to load API key status:', error);
+            }
+
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.7);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+            `;
+            
+            const content = document.createElement('div');
+            content.style.cssText = `
+                background: var(--bg-card);
+                padding: 24px;
+                border-radius: 12px;
+                max-width: 500px;
+                width: 90%;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            `;
+            
+            const currentKey = apiKey || defaultApiKey || 'Not set';
+            const keySource = apiKey ? 'Custom' : (defaultApiKey ? 'Default (from environment)' : 'Not set');
+            
+            content.innerHTML = `
+                <h3 style="margin: 0 0 16px 0; color: var(--text);">API Key Management</h3>
+                <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 14px;">
+                    Your API key is used to authenticate API requests. Keep it secure and never share it publicly.
+                </p>
+                ${hasDefaultKey && !apiKey ? `
+                    <div style="margin-bottom: 16px; padding: 12px; background: rgba(99, 102, 241, 0.1); border-radius: 8px; border: 1px solid rgba(99, 102, 241, 0.3);">
+                        <p style="margin: 0; font-size: 13px; color: var(--text-muted);">
+                            ℹ️ Using default API key from environment variable. You can set a custom key for this session.
+                        </p>
+                    </div>
+                ` : ''}
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 8px; color: var(--text); font-size: 14px;">
+                        Current API Key
+                        <span style="font-size: 11px; color: var(--text-muted); margin-left: 8px;">(${keySource})</span>
+                    </label>
+                    <div style="display: flex; gap: 8px;">
+                        <input 
+                            type="text" 
+                            id="apiKeyDisplay" 
+                            readonly 
+                            style="flex: 1; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: monospace; font-size: 12px;"
+                            value="${currentKey}"
+                        >
+                        <button onclick="copyApiKey()" class="btn btn-outline" style="padding: 10px 16px;">📋 Copy</button>
+                    </div>
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 8px; color: var(--text); font-size: 14px;">Set Custom API Key</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input 
+                            type="text" 
+                            id="customApiKeyInput" 
+                            placeholder="Enter or generate API key"
+                            style="flex: 1; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: monospace; font-size: 12px;"
+                        >
+                        <button onclick="generateRandomKey()" class="btn btn-outline" style="padding: 10px 16px;">🎲 Generate</button>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                    <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" class="btn btn-outline">Close</button>
+                    <button onclick="saveCustomApiKey()" class="btn-login">Save Custom Key</button>
+                    ${apiKey ? `<button onclick="resetToDefault()" class="btn btn-outline" style="background: var(--bg-dark);">Reset to Default</button>` : ''}
+                </div>
+            `;
+            
+            modal.appendChild(content);
+            document.body.appendChild(modal);
+            
+            // Close on backdrop click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+            
+            // Add functions to window for inline handlers
+            window.copyApiKey = function() {
+                const input = document.getElementById('apiKeyDisplay');
+                if (input && input.value && input.value !== 'Not set') {
+                    input.select();
+                    document.execCommand('copy');
+                    showToast('API key copied to clipboard!', 'success');
+                }
+            };
+            
+            window.generateRandomKey = function() {
+                const input = document.getElementById('customApiKeyInput');
+                if (input) {
+                    input.value = generateApiKey();
+                }
+            };
+            
+            window.saveCustomApiKey = async function() {
+                const input = document.getElementById('customApiKeyInput');
+                if (input && input.value.trim()) {
+                    const keyToSave = input.value.trim();
+                    
+                    try {
+                        // Save to server
+                        const response = await fetch('/api/dashboard/api-key', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ apiKey: keyToSave })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            // Save to session storage for dashboard use
+                            apiKey = keyToSave;
+                            sessionStorage.setItem('api_key', apiKey);
+                            showToast('API key saved successfully!', 'success');
+                            modal.remove();
+                        } else {
+                            showToast(data.message || 'Failed to save API key', 'error');
+                        }
+                    } catch (error) {
+                        showToast('Error saving API key: ' + error.message, 'error');
+                    }
+                } else {
+                    showToast('Please enter or generate an API key', 'error');
+                }
+            };
+            
+            window.resetToDefault = function() {
+                if (confirm('Reset to default API key from environment? Your custom key will be removed.')) {
+                    apiKey = '';
+                    sessionStorage.removeItem('api_key');
+                    showToast('Reset to default API key', 'success');
+                    modal.remove();
+                    // Reload default
+                    loadDefaultApiKey();
+                }
+            };
+        }
+
         function logout() {
-            sessionStorage.removeItem('dashboard_auth');
-            sessionStorage.removeItem('api_key');
-            apiKey = '';
-            isAuthenticated = false;
-            alert('👋 Logged out successfully');
-            window.location.reload();
+            if (confirm('Are you sure you want to logout?')) {
+                sessionStorage.removeItem('dashboard_auth');
+                sessionStorage.removeItem('api_key');
+                apiKey = '';
+                isAuthenticated = false;
+                
+                // Disconnect WebSocket
+                if (socket) {
+                    socket.disconnect();
+                }
+                
+                // Show login screen
+                document.getElementById('loginScreen').classList.remove('hidden');
+                document.getElementById('loginForm').reset();
+                document.getElementById('loginError').classList.remove('show');
+            }
         }
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
             // Check if already authenticated
-            if (!checkAuth()) {
-                const loggedIn = await promptLogin();
-                if (!loggedIn) return;
-            }
-            
-            connectWebSocket();
-            loadSessions();
-            loadWsStats();
-            updateRequestBody();
-            
-            // Refresh stats every 30 seconds
-            setInterval(() => {
+            if (checkAuth()) {
+                // Hide login screen if already authenticated
+                document.getElementById('loginScreen').classList.add('hidden');
+                
+                // Initialize dashboard
+                connectWebSocket();
                 loadSessions();
                 loadWsStats();
-            }, 30000);
+                updateRequestBody();
+                
+                // Refresh stats every 30 seconds
+                setInterval(() => {
+                    loadSessions();
+                    loadWsStats();
+                }, 30000);
+            } else {
+                // Show login screen - user will login via form
+                document.getElementById('loginUsername').focus();
+            }
         });
 
         // WebSocket Connection

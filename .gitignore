@@ -6,6 +6,11 @@ auth_info/
 sessions/
 public/media/
 n8n-nodes-chatery-whatsapp/
+data/
+*.db
+*.sqlite
+*.sqlite3
+data/api-keys.json
 
 # TypeScript build output
 dist/

@@ -20,17 +20,6 @@ A powerful WhatsApp API backend built with Express.js and Baileys library. Suppo
 - 🔐 **Session Persistence** - Sessions survive server restarts
 - 🎛️ **Admin Dashboard** - Web-based dashboard with real-time monitoring and API tester
 
-## 📖 Full Documentation
-
-For complete and detailed documentation, please visit:
-
-| 🌐 Documentation | Link |
-|------------------|------|
-| **Primary Docs** | [https://docs.whatsbridge.app](https://docs.whatsbridge.app/) |
-| **Mirror Docs** | [https://whatsbridge-documentation.appwrite.network](https://whatsbridge-documentation.appwrite.network) |
-
-> 📚 The documentation includes complete API reference, examples, troubleshooting guides, and more.
-
 ## 📋 Table of Contents
 
 - [Full Documentation](#-full-documentation)
@@ -55,27 +44,27 @@ For complete and detailed documentation, please visit:
 
 ```bash
 # Clone the repository
-git clone https://github.com/farinchan/whatsbridge.git
+git clone https://github.com/rsuregar/whatsbridge.git
 cd whatsbridge
 
 # Install dependencies
-npm install
+bun install
 
 # Create environment file
 cp .env.example .env
 
 # Start the server
-npm start
+bun start
 
 # Or development mode with auto-reload
-npm run dev
+bun run dev
 ```
 
 ### Option 2: Docker Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/farinchan/whatsbridge.git
+git clone https://github.com/rsuregar/whatsbridge.git
 cd whatsbridge
 
 # Create environment file
@@ -93,23 +82,23 @@ docker-compose down
 
 #### Docker Commands
 
-| Command | Description |
-|---------|-------------|
-| `docker-compose up -d` | Start container in background |
-| `docker-compose down` | Stop and remove container |
-| `docker-compose logs -f` | View live logs |
-| `docker-compose restart` | Restart container |
-| `docker-compose build --no-cache` | Rebuild image |
+| Command                           | Description                   |
+| --------------------------------- | ----------------------------- |
+| `docker-compose up -d`            | Start container in background |
+| `docker-compose down`             | Stop and remove container     |
+| `docker-compose logs -f`          | View live logs                |
+| `docker-compose restart`          | Restart container             |
+| `docker-compose build --no-cache` | Rebuild image                 |
 
 #### Docker Volumes
 
 The following data is persisted across container restarts:
 
-| Volume | Path | Description |
-|--------|------|-------------|
-| `whatsbridge_sessions` | `/app/sessions` | WhatsApp session data |
-| `whatsbridge_media` | `/app/public/media` | Received media files |
-| `whatsbridge_store` | `/app/store` | Message history store |
+| Volume                 | Path                | Description           |
+| ---------------------- | ------------------- | --------------------- |
+| `whatsbridge_sessions` | `/app/sessions`     | WhatsApp session data |
+| `whatsbridge_media`    | `/app/public/media` | Received media files  |
+| `whatsbridge_store`    | `/app/store`        | Message history store |
 
 ## ⚙ Configuration
 
@@ -134,6 +123,7 @@ All WhatsApp API endpoints are protected with API key authentication. Include th
 ### How to Enable
 
 1. Set a strong API key in your `.env` file:
+
    ```env
    API_KEY=your_super_secret_key_12345
    ```
@@ -147,6 +137,7 @@ All WhatsApp API endpoints are protected with API key authentication. Include th
 ### Disable Authentication
 
 To disable API key authentication, leave `API_KEY` empty or set it to `your_api_key_here` in `.env`:
+
 ```env
 API_KEY=
 # or
@@ -155,10 +146,10 @@ API_KEY=your_api_key_here
 
 ### Error Responses
 
-| Status | Message | Description |
-|--------|---------|-------------|
-| 401 | Missing X-Api-Key header | API key not provided in request |
-| 403 | Invalid API key | API key doesn't match |
+| Status | Message                  | Description                     |
+| ------ | ------------------------ | ------------------------------- |
+| 401    | Missing X-Api-Key header | API key not provided in request |
+| 403    | Invalid API key          | API key doesn't match           |
 
 ### Dashboard Integration
 
@@ -167,11 +158,13 @@ When logging into the dashboard, you'll be prompted to enter your API key (optio
 ## 🚀 Quick Start
 
 1. **Start the server**
+
    ```bash
    npm start
    ```
 
 2. **Create a session**
+
    ```bash
    curl -X POST http://localhost:3000/api/whatsapp/sessions/mysession/connect \
      -H "X-Api-Key: your_api_key" \
@@ -179,9 +172,11 @@ When logging into the dashboard, you'll be prompted to enter your API key (optio
    ```
 
 3. **Get QR Code** - Open in browser or scan
+
    ```
    http://localhost:3000/api/whatsapp/sessions/mysession/qr/image
    ```
+
    Note: QR image endpoint also requires API key. Use curl or include header.
 
 4. **Send a message**
@@ -202,28 +197,29 @@ Access the admin dashboard at `http://localhost:3000/dashboard`
 
 Dashboard requires login with username and password configured in `.env` file.
 
-| Field | Default Value |
-|-------|---------------|
-| Username | `admin` |
-| Password | `admin123` |
+| Field    | Default Value |
+| -------- | ------------- |
+| Username | `admin`       |
+| Password | `admin123`    |
 
 ### ✨ Dashboard Features
 
-| Feature | Description |
-|---------|-------------|
-| 📊 **Real-time Stats** | Monitor total sessions, connected/disconnected status, and WebSocket clients |
-| 📱 **Session Management** | Create, connect, reconnect, and delete WhatsApp sessions |
-| 📷 **QR Code Scanner** | Scan QR codes directly from the dashboard |
-| 📡 **Live Events** | Real-time WebSocket event viewer with filtering |
-| 💬 **Quick Send** | Send messages quickly to any number |
-| 🧪 **API Tester** | Test all 30+ API endpoints with pre-filled templates |
-| 🚪 **Logout** | Secure logout button in header |
+| Feature                   | Description                                                                  |
+| ------------------------- | ---------------------------------------------------------------------------- |
+| 📊 **Real-time Stats**    | Monitor total sessions, connected/disconnected status, and WebSocket clients |
+| 📱 **Session Management** | Create, connect, reconnect, and delete WhatsApp sessions                     |
+| 📷 **QR Code Scanner**    | Scan QR codes directly from the dashboard                                    |
+| 📡 **Live Events**        | Real-time WebSocket event viewer with filtering                              |
+| 💬 **Quick Send**         | Send messages quickly to any number                                          |
+| 🧪 **API Tester**         | Test all 30+ API endpoints with pre-filled templates                         |
+| 🚪 **Logout**             | Secure logout button in header                                               |
 
 ### 📸 Screenshots
 
 ![Dashboard Screenshot](./screenshot/image.png)
 
 The dashboard provides a modern dark-themed interface:
+
 - **Session Cards** - View all sessions with status indicators
 - **QR Modal** - Full-screen QR code for easy scanning
 - **Event Log** - Live scrolling event feed with timestamps
@@ -238,11 +234,13 @@ Base URL: `http://localhost:3000/api/whatsapp`
 ### Sessions
 
 #### List All Sessions
+
 ```http
 GET /sessions
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -260,11 +258,13 @@ GET /sessions
 ```
 
 #### Create/Connect Session
+
 ```http
 POST /sessions/:sessionId/connect
 ```
 
 **Body (Optional):**
+
 ```json
 {
   "metadata": {
@@ -279,12 +279,13 @@ POST /sessions/:sessionId/connect
 }
 ```
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `metadata` | object | Optional. Custom metadata to store with session |
-| `webhooks` | array | Optional. Array of webhook configs `[{ url, events }]` |
+| Parameter  | Type   | Description                                            |
+| ---------- | ------ | ------------------------------------------------------ |
+| `metadata` | object | Optional. Custom metadata to store with session        |
+| `webhooks` | array  | Optional. Array of webhook configs `[{ url, events }]` |
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -302,21 +303,27 @@ POST /sessions/:sessionId/connect
 ```
 
 #### Update Session Config
+
 ```http
 PATCH /sessions/:sessionId/config
 ```
 
 **Body:**
+
 ```json
 {
   "metadata": { "newField": "value" },
   "webhooks": [
-    { "url": "https://new-webhook.com/endpoint", "events": ["message", "connection.update"] }
+    {
+      "url": "https://new-webhook.com/endpoint",
+      "events": ["message", "connection.update"]
+    }
   ]
 }
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -325,18 +332,23 @@ PATCH /sessions/:sessionId/config
     "sessionId": "mysession",
     "metadata": { "userId": "user123", "newField": "value" },
     "webhooks": [
-      { "url": "https://new-webhook.com/endpoint", "events": ["message", "connection.update"] }
+      {
+        "url": "https://new-webhook.com/endpoint",
+        "events": ["message", "connection.update"]
+      }
     ]
   }
 }
 ```
 
 #### Add Webhook
+
 ```http
 POST /sessions/:sessionId/webhooks
 ```
 
 **Body:**
+
 ```json
 {
   "url": "https://another-server.com/webhook",
@@ -345,11 +357,13 @@ POST /sessions/:sessionId/webhooks
 ```
 
 #### Remove Webhook
+
 ```http
 DELETE /sessions/:sessionId/webhooks
 ```
 
 **Body:**
+
 ```json
 {
   "url": "https://another-server.com/webhook"
@@ -357,22 +371,27 @@ DELETE /sessions/:sessionId/webhooks
 ```
 
 #### Get Session Status
+
 ```http
 GET /sessions/:sessionId/status
 ```
 
 #### Get QR Code (JSON)
+
 ```http
 GET /sessions/:sessionId/qr
 ```
 
 #### Get QR Code (Image)
+
 ```http
 GET /sessions/:sessionId/qr/image
 ```
+
 Returns a PNG image that can be displayed directly in browser or scanned.
 
 #### Delete Session
+
 ```http
 DELETE /sessions/:sessionId
 ```
@@ -384,11 +403,13 @@ DELETE /sessions/:sessionId
 > **💡 Typing Indicator**: All messaging endpoints support `typingTime` parameter (in milliseconds) to simulate typing before sending the message. This makes the bot appear more human-like.
 
 #### Send Text Message
+
 ```http
 POST /chats/send-text
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -398,19 +419,21 @@ POST /chats/send-text
 }
 ```
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `sessionId` | string | Required. Session ID |
-| `chatId` | string | Required. Phone number (628xxx) or group ID (xxx@g.us) |
-| `message` | string | Required. Text message to send |
+| Parameter    | Type   | Description                                                 |
+| ------------ | ------ | ----------------------------------------------------------- |
+| `sessionId`  | string | Required. Session ID                                        |
+| `chatId`     | string | Required. Phone number (628xxx) or group ID (xxx@g.us)      |
+| `message`    | string | Required. Text message to send                              |
 | `typingTime` | number | Optional. Typing duration in ms before sending (default: 0) |
 
 #### Send Image
+
 ```http
 POST /chats/send-image
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -421,20 +444,22 @@ POST /chats/send-image
 }
 ```
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `sessionId` | string | Required. Session ID |
-| `chatId` | string | Required. Phone number or group ID |
-| `imageUrl` | string | Required. Direct URL to image file |
-| `caption` | string | Optional. Image caption |
+| Parameter    | Type   | Description                                  |
+| ------------ | ------ | -------------------------------------------- |
+| `sessionId`  | string | Required. Session ID                         |
+| `chatId`     | string | Required. Phone number or group ID           |
+| `imageUrl`   | string | Required. Direct URL to image file           |
+| `caption`    | string | Optional. Image caption                      |
 | `typingTime` | number | Optional. Typing duration in ms (default: 0) |
 
 #### Send Document
+
 ```http
 POST /chats/send-document
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -446,21 +471,23 @@ POST /chats/send-document
 }
 ```
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `sessionId` | string | Required. Session ID |
-| `chatId` | string | Required. Phone number or group ID |
-| `documentUrl` | string | Required. Direct URL to document |
-| `filename` | string | Required. Filename to display |
-| `mimetype` | string | Optional. MIME type (default: application/pdf) |
-| `typingTime` | number | Optional. Typing duration in ms (default: 0) |
+| Parameter     | Type   | Description                                    |
+| ------------- | ------ | ---------------------------------------------- |
+| `sessionId`   | string | Required. Session ID                           |
+| `chatId`      | string | Required. Phone number or group ID             |
+| `documentUrl` | string | Required. Direct URL to document               |
+| `filename`    | string | Required. Filename to display                  |
+| `mimetype`    | string | Optional. MIME type (default: application/pdf) |
+| `typingTime`  | number | Optional. Typing duration in ms (default: 0)   |
 
 #### Send Location
+
 ```http
 POST /chats/send-location
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -472,21 +499,23 @@ POST /chats/send-location
 }
 ```
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `sessionId` | string | Required. Session ID |
-| `chatId` | string | Required. Phone number or group ID |
-| `latitude` | number | Required. GPS latitude |
-| `longitude` | number | Required. GPS longitude |
-| `name` | string | Optional. Location name |
+| Parameter    | Type   | Description                                  |
+| ------------ | ------ | -------------------------------------------- |
+| `sessionId`  | string | Required. Session ID                         |
+| `chatId`     | string | Required. Phone number or group ID           |
+| `latitude`   | number | Required. GPS latitude                       |
+| `longitude`  | number | Required. GPS longitude                      |
+| `name`       | string | Optional. Location name                      |
 | `typingTime` | number | Optional. Typing duration in ms (default: 0) |
 
 #### Send Contact
+
 ```http
 POST /chats/send-contact
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -497,20 +526,22 @@ POST /chats/send-contact
 }
 ```
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `sessionId` | string | Required. Session ID |
-| `chatId` | string | Required. Phone number or group ID |
-| `contactName` | string | Required. Contact display name |
-| `contactPhone` | string | Required. Contact phone number |
-| `typingTime` | number | Optional. Typing duration in ms (default: 0) |
+| Parameter      | Type   | Description                                  |
+| -------------- | ------ | -------------------------------------------- |
+| `sessionId`    | string | Required. Session ID                         |
+| `chatId`       | string | Required. Phone number or group ID           |
+| `contactName`  | string | Required. Contact display name               |
+| `contactPhone` | string | Required. Contact phone number               |
+| `typingTime`   | number | Optional. Typing duration in ms (default: 0) |
 
 #### Send Button Message
+
 ```http
 POST /chats/send-button
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -522,21 +553,23 @@ POST /chats/send-button
 }
 ```
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `sessionId` | string | Required. Session ID |
-| `chatId` | string | Required. Phone number or group ID |
-| `text` | string | Required. Button message text |
-| `footer` | string | Optional. Footer text |
-| `buttons` | array | Required. Array of button labels (max 3) |
+| Parameter    | Type   | Description                                  |
+| ------------ | ------ | -------------------------------------------- |
+| `sessionId`  | string | Required. Session ID                         |
+| `chatId`     | string | Required. Phone number or group ID           |
+| `text`       | string | Required. Button message text                |
+| `footer`     | string | Optional. Footer text                        |
+| `buttons`    | array  | Required. Array of button labels (max 3)     |
 | `typingTime` | number | Optional. Typing duration in ms (default: 0) |
 
 #### Send Presence Update
+
 ```http
 POST /chats/presence
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -545,18 +578,20 @@ POST /chats/presence
 }
 ```
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `sessionId` | string | Required. Session ID |
-| `chatId` | string | Required. Phone number or group ID |
-| `presence` | string | Required. `composing`, `recording`, `paused`, `available`, `unavailable` |
+| Parameter   | Type   | Description                                                              |
+| ----------- | ------ | ------------------------------------------------------------------------ |
+| `sessionId` | string | Required. Session ID                                                     |
+| `chatId`    | string | Required. Phone number or group ID                                       |
+| `presence`  | string | Required. `composing`, `recording`, `paused`, `available`, `unavailable` |
 
 #### Check Phone Number
+
 ```http
 POST /chats/check-number
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -565,11 +600,13 @@ POST /chats/check-number
 ```
 
 #### Get Profile Picture
+
 ```http
 POST /chats/profile-picture
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -582,11 +619,13 @@ POST /chats/profile-picture
 ### Chat History
 
 #### Get Chats Overview
+
 ```http
 POST /chats/overview
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -596,19 +635,21 @@ POST /chats/overview
 }
 ```
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `sessionId` | string | Required. Session ID |
-| `limit` | number | Optional. Max results (default: 50) |
-| `offset` | number | Optional. Pagination offset (default: 0) |
-| `type` | string | Optional. Filter: `all`, `personal`, `group` |
+| Parameter   | Type   | Description                                  |
+| ----------- | ------ | -------------------------------------------- |
+| `sessionId` | string | Required. Session ID                         |
+| `limit`     | number | Optional. Max results (default: 50)          |
+| `offset`    | number | Optional. Pagination offset (default: 0)     |
+| `type`      | string | Optional. Filter: `all`, `personal`, `group` |
 
 #### Get Contacts
+
 ```http
 POST /contacts
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -619,11 +660,13 @@ POST /contacts
 ```
 
 #### Get Chat Messages
+
 ```http
 POST /chats/messages
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -634,11 +677,13 @@ POST /chats/messages
 ```
 
 #### Get Chat Info
+
 ```http
 POST /chats/info
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -647,11 +692,13 @@ POST /chats/info
 ```
 
 #### Mark Chat as Read
+
 ```http
 POST /chats/mark-read
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -660,10 +707,10 @@ POST /chats/mark-read
 }
 ```
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `sessionId` | string | Required. Session ID |
-| `chatId` | string | Required. Phone number or group ID |
+| Parameter   | Type   | Description                                   |
+| ----------- | ------ | --------------------------------------------- |
+| `sessionId` | string | Required. Session ID                          |
+| `chatId`    | string | Required. Phone number or group ID            |
 | `messageId` | string | Optional. Specific message ID to mark as read |
 
 ---
@@ -671,11 +718,13 @@ POST /chats/mark-read
 ### Group Management
 
 #### Get All Groups
+
 ```http
 POST /groups
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession"
@@ -683,6 +732,7 @@ POST /groups
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -701,11 +751,13 @@ POST /groups
 ```
 
 #### Create Group
+
 ```http
 POST /groups/create
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -715,11 +767,13 @@ POST /groups/create
 ```
 
 #### Get Group Metadata
+
 ```http
 POST /groups/metadata
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -728,6 +782,7 @@ POST /groups/metadata
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -745,11 +800,13 @@ POST /groups/metadata
 ```
 
 #### Add Participants
+
 ```http
 POST /groups/participants/add
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -759,11 +816,13 @@ POST /groups/participants/add
 ```
 
 #### Remove Participants
+
 ```http
 POST /groups/participants/remove
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -773,11 +832,13 @@ POST /groups/participants/remove
 ```
 
 #### Promote to Admin
+
 ```http
 POST /groups/participants/promote
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -787,11 +848,13 @@ POST /groups/participants/promote
 ```
 
 #### Demote from Admin
+
 ```http
 POST /groups/participants/demote
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -801,11 +864,13 @@ POST /groups/participants/demote
 ```
 
 #### Update Group Subject (Name)
+
 ```http
 POST /groups/subject
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -815,11 +880,13 @@ POST /groups/subject
 ```
 
 #### Update Group Description
+
 ```http
 POST /groups/description
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -829,11 +896,13 @@ POST /groups/description
 ```
 
 #### Update Group Settings
+
 ```http
 POST /groups/settings
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -842,19 +911,21 @@ POST /groups/settings
 }
 ```
 
-| Setting | Description |
-|---------|-------------|
-| `announcement` | Only admins can send messages |
-| `not_announcement` | All participants can send messages |
-| `locked` | Only admins can edit group info |
-| `unlocked` | All participants can edit group info |
+| Setting            | Description                          |
+| ------------------ | ------------------------------------ |
+| `announcement`     | Only admins can send messages        |
+| `not_announcement` | All participants can send messages   |
+| `locked`           | Only admins can edit group info      |
+| `unlocked`         | All participants can edit group info |
 
 #### Update Group Picture
+
 ```http
 POST /groups/picture
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -864,11 +935,13 @@ POST /groups/picture
 ```
 
 #### Leave Group
+
 ```http
 POST /groups/leave
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -877,11 +950,13 @@ POST /groups/leave
 ```
 
 #### Join Group via Invite
+
 ```http
 POST /groups/join
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -890,11 +965,13 @@ POST /groups/join
 ```
 
 #### Get Invite Code
+
 ```http
 POST /groups/invite-code
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -903,6 +980,7 @@ POST /groups/invite-code
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -915,11 +993,13 @@ POST /groups/invite-code
 ```
 
 #### Revoke Invite Code
+
 ```http
 POST /groups/revoke-invite
 ```
 
 **Body:**
+
 ```json
 {
   "sessionId": "mysession",
@@ -936,51 +1016,51 @@ Connect to WebSocket server at `ws://localhost:3000`
 ### Connection
 
 ```javascript
-import { io } from 'socket.io-client';
+import { io } from "socket.io-client";
 
-const socket = io('http://localhost:3000');
+const socket = io("http://localhost:3000");
 
 // Subscribe to a session
-socket.emit('subscribe', 'mysession');
+socket.emit("subscribe", "mysession");
 
 // Unsubscribe from a session
-socket.emit('unsubscribe', 'mysession');
+socket.emit("unsubscribe", "mysession");
 ```
 
 ### Events
 
-| Event | Description | Payload |
-|-------|-------------|---------|
-| `qr` | QR code generated | `{ sessionId, qrCode, timestamp }` |
-| `connection.update` | Connection status changed | `{ sessionId, status, phoneNumber?, name?, timestamp }` |
-| `message` | New message received | `{ sessionId, message, timestamp }` |
-| `message.sent` | Message sent confirmation | `{ sessionId, message, timestamp }` |
-| `message.update` | Message status update (read, delivered) | `{ sessionId, update, timestamp }` |
-| `message.reaction` | Message reaction added | `{ sessionId, reactions, timestamp }` |
-| `message.revoke` | Message deleted/revoked | `{ sessionId, key, participant, timestamp }` |
-| `chat.update` | Chat updated | `{ sessionId, chats, timestamp }` |
-| `chat.upsert` | New chat created | `{ sessionId, chats, timestamp }` |
-| `chat.delete` | Chat deleted | `{ sessionId, chatIds, timestamp }` |
-| `contact.update` | Contact updated | `{ sessionId, contacts, timestamp }` |
-| `presence.update` | Typing, online status | `{ sessionId, presence, timestamp }` |
-| `group.participants` | Group members changed | `{ sessionId, update, timestamp }` |
-| `group.update` | Group info changed | `{ sessionId, update, timestamp }` |
-| `call` | Incoming call | `{ sessionId, call, timestamp }` |
-| `labels` | Labels updated (business) | `{ sessionId, labels, timestamp }` |
-| `logged.out` | Session logged out | `{ sessionId, message, timestamp }` |
+| Event                | Description                             | Payload                                                 |
+| -------------------- | --------------------------------------- | ------------------------------------------------------- |
+| `qr`                 | QR code generated                       | `{ sessionId, qrCode, timestamp }`                      |
+| `connection.update`  | Connection status changed               | `{ sessionId, status, phoneNumber?, name?, timestamp }` |
+| `message`            | New message received                    | `{ sessionId, message, timestamp }`                     |
+| `message.sent`       | Message sent confirmation               | `{ sessionId, message, timestamp }`                     |
+| `message.update`     | Message status update (read, delivered) | `{ sessionId, update, timestamp }`                      |
+| `message.reaction`   | Message reaction added                  | `{ sessionId, reactions, timestamp }`                   |
+| `message.revoke`     | Message deleted/revoked                 | `{ sessionId, key, participant, timestamp }`            |
+| `chat.update`        | Chat updated                            | `{ sessionId, chats, timestamp }`                       |
+| `chat.upsert`        | New chat created                        | `{ sessionId, chats, timestamp }`                       |
+| `chat.delete`        | Chat deleted                            | `{ sessionId, chatIds, timestamp }`                     |
+| `contact.update`     | Contact updated                         | `{ sessionId, contacts, timestamp }`                    |
+| `presence.update`    | Typing, online status                   | `{ sessionId, presence, timestamp }`                    |
+| `group.participants` | Group members changed                   | `{ sessionId, update, timestamp }`                      |
+| `group.update`       | Group info changed                      | `{ sessionId, update, timestamp }`                      |
+| `call`               | Incoming call                           | `{ sessionId, call, timestamp }`                        |
+| `labels`             | Labels updated (business)               | `{ sessionId, labels, timestamp }`                      |
+| `logged.out`         | Session logged out                      | `{ sessionId, message, timestamp }`                     |
 
 ### Example: Listen for Messages
 
 ```javascript
-const socket = io('http://localhost:3000');
+const socket = io("http://localhost:3000");
 
-socket.on('connect', () => {
-  console.log('Connected to WebSocket');
-  socket.emit('subscribe', 'mysession');
+socket.on("connect", () => {
+  console.log("Connected to WebSocket");
+  socket.emit("subscribe", "mysession");
 });
 
-socket.on('message', (data) => {
-  console.log('New message:', data.message);
+socket.on("message", (data) => {
+  console.log("New message:", data.message);
   // {
   //   sessionId: 'mysession',
   //   message: {
@@ -994,13 +1074,13 @@ socket.on('message', (data) => {
   // }
 });
 
-socket.on('qr', (data) => {
-  console.log('Scan QR Code:', data.qrCode);
+socket.on("qr", (data) => {
+  console.log("Scan QR Code:", data.qrCode);
 });
 
-socket.on('connection.update', (data) => {
-  console.log('Connection status:', data.status);
-  if (data.status === 'connected') {
+socket.on("connection.update", (data) => {
+  console.log("Connection status:", data.status);
+  if (data.status === "connected") {
     console.log(`Connected as ${data.name} (${data.phoneNumber})`);
   }
 });
@@ -1082,20 +1162,20 @@ All configured webhook endpoints will receive POST requests with this format:
 
 ### Webhook Headers
 
-| Header | Value |
-|--------|-------|
-| `Content-Type` | `application/json` |
-| `X-Webhook-Source` | `whatsbridge-api` |
-| `X-Session-Id` | Session ID |
-| `X-Webhook-Event` | Event name |
+| Header             | Value              |
+| ------------------ | ------------------ |
+| `Content-Type`     | `application/json` |
+| `X-Webhook-Source` | `whatsbridge-api`  |
+| `X-Session-Id`     | Session ID         |
+| `X-Webhook-Event`  | Event name         |
 
 ### Available Webhook Events
 
-| Event | Description |
-|-------|-------------|
+| Event               | Description                                         |
+| ------------------- | --------------------------------------------------- |
 | `connection.update` | Connection status changed (connected, disconnected) |
-| `message` | New message received |
-| `message.sent` | Message sent confirmation |
+| `message`           | New message received                                |
+| `message.sent`      | Message sent confirmation                           |
 
 Set `events: ["all"]` to receive all events, or specify individual events per webhook.
 
@@ -1106,6 +1186,7 @@ GET /api/websocket/stats
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -1160,9 +1241,9 @@ whatsbridge/
 ### Node.js Client
 
 ```javascript
-const axios = require('axios');
+const axios = require("axios");
 
-const API_URL = 'http://localhost:3000/api/whatsapp';
+const API_URL = "http://localhost:3000/api/whatsapp";
 
 // Create session
 async function createSession(sessionId) {
@@ -1175,7 +1256,7 @@ async function sendMessage(sessionId, to, message) {
   const response = await axios.post(`${API_URL}/chats/send-text`, {
     sessionId,
     to,
-    message
+    message,
   });
   return response.data;
 }
@@ -1234,60 +1315,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## ☕ Support & Donate
-
-If you find this project helpful, consider supporting the development:
-
-<p align="center">
-  <a href="https://saweria.co/https://saweria.co/fajrichan">
-    <img src="https://img.shields.io/badge/Saweria-Buy%20Me%20a%20Coffee-orange?style=for-the-badge&logo=ko-fi" alt="Saweria" />
-  </a>
-  <a href="https://paypal.me/farinchan">
-    <img src="https://img.shields.io/badge/PayPal-Donate-blue?style=for-the-badge&logo=paypal" alt="PayPal" />
-  </a>
-  
-</p>
-
-<p align="center">
-  <a href="https://github.com/farinchan/whatsbridge">
-    <img src="https://img.shields.io/github/stars/farinchan/whatsbridge?style=social" alt="GitHub Stars" />
-  </a>
-  <a href="https://github.com/farinchan/whatsbridge/fork">
-    <img src="https://img.shields.io/github/forks/farinchan/whatsbridge?style=social" alt="GitHub Forks" />
-  </a>
-</p>
-
-Your support helps me maintain and improve this project! ❤️
-
----
-
-## 👨‍💻 Author
-
-**Fajri Rinaldi Chan** (Farin Chan)
-
-<p align="left">
-  <a href="https://github.com/farinchan">
-    <img src="https://img.shields.io/badge/GitHub-@farinchan-181717?style=for-the-badge&logo=github" alt="GitHub" />
-  </a>
-  <a href="https://www.linkedin.com/in/fajri-chan">
-    <img src="https://img.shields.io/badge/LinkedIn-farinchan-0077B5?style=for-the-badge&logo=linkedin" alt="LinkedIn" />
-  </a>
-  <a href="https://www.instagram.com/fajri_chan">
-    <img src="https://img.shields.io/badge/Instagram-@farinchan-E4405F?style=for-the-badge&logo=instagram&logoColor=white" alt="Instagram" />
-  </a>
-</p>
-
----
-
 ## 🔗 Quick Links
 
-| Resource | URL |
-|----------|-----|
-| 🎛️ Dashboard | http://localhost:3000/dashboard |
-| 📚 API Base URL | http://localhost:3000/api/whatsapp |
-| 🔌 WebSocket Test | http://localhost:3000/ws-test |
+| Resource           | URL                                       |
+| ------------------ | ----------------------------------------- |
+| 🎛️ Dashboard       | http://localhost:3000/dashboard           |
+| 📚 API Base URL    | http://localhost:3000/api/whatsapp        |
+| 🔌 WebSocket Test  | http://localhost:3000/ws-test             |
 | 📊 WebSocket Stats | http://localhost:3000/api/websocket/stats |
-| ❤️ Health Check | http://localhost:3000/api/health |
+| ❤️ Health Check    | http://localhost:3000/api/health          |
 
 ---
 
