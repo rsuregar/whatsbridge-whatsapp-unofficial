@@ -1801,8 +1801,9 @@ class WhatsAppSession {
 
   /**
    * Send broadcast messages with anti-ban features
+   * Supports text, image, and document types
    * @param recipients - Array of phone numbers or chat IDs
-   * @param message - Message text to send
+   * @param message - Message text/caption to send
    * @param options - Broadcast options for anti-ban
    * @returns ApiResponse with progress and results
    */
@@ -1817,6 +1818,13 @@ class WhatsAppSession {
       checkNumber?: boolean;
       batchSize?: number;
       batchDelay?: number;
+      type?: "text" | "image" | "document";
+      imageUrl?: string;
+      documentUrl?: string;
+      filename?: string;
+      mimetype?: string;
+      previewLinks?: boolean;
+      mentions?: string[];
     } = {}
   ): Promise<any> {
     try {
@@ -1832,6 +1840,13 @@ class WhatsAppSession {
         checkNumber = false,
         batchSize = 10,
         batchDelay = 30000, // 30 seconds between batches
+        type = "text",
+        imageUrl,
+        documentUrl,
+        filename,
+        mimetype = "application/pdf",
+        previewLinks = false,
+        mentions = [],
       } = options;
 
       const results: any[] = [];
@@ -1868,12 +1883,47 @@ class WhatsAppSession {
             }
 
             // Send message with typing simulation
-            const result = await this.sendTextMessage(
-              recipient,
-              message,
-              typingTime,
-              footerName
-            );
+            // Supports text, image, and document types
+            let result: any;
+
+            if (type === "image" && imageUrl) {
+              // Send image broadcast
+              result = await this.sendImage(
+                recipient,
+                imageUrl,
+                message, // caption
+                typingTime,
+                footerName,
+                true, // compress (default)
+                80, // quality (default)
+                mentions, // mentions array
+                false // viewOnce (default)
+              );
+            } else if (type === "document" && documentUrl && filename) {
+              // Send document broadcast
+              result = await this.sendDocument(
+                recipient,
+                documentUrl,
+                filename,
+                mimetype,
+                message, // caption
+                typingTime,
+                footerName,
+                mentions, // mentions array
+                false // viewOnce (default)
+              );
+            } else {
+              // Send text broadcast (default)
+              // Mentions are automatically parsed from @phoneNumber in message text
+              result = await this.sendTextMessage(
+                recipient,
+                message,
+                typingTime,
+                footerName,
+                mentions, // mentions array (can also use @phoneNumber in message)
+                previewLinks
+              );
+            }
 
             if (result.success) {
               successCount++;
@@ -1953,6 +2003,7 @@ class WhatsAppSession {
       checkNumber?: boolean;
       batchSize?: number;
       batchDelay?: number;
+      previewLinks?: boolean;
     } = {}
   ): Promise<any> {
     try {
@@ -1968,6 +2019,7 @@ class WhatsAppSession {
         checkNumber = false,
         batchSize = 10,
         batchDelay = 30000,
+        previewLinks = false,
       } = options;
 
       const results: any[] = [];
@@ -2005,11 +2057,15 @@ class WhatsAppSession {
             }
 
             // Send message with typing simulation
+            // Mentions are automatically parsed from @phoneNumber in message text
+            // previewLinks can be enabled via options
             const result = await this.sendTextMessage(
               item.phone,
               item.message,
               typingTime,
-              footerName
+              footerName,
+              [], // mentions array (empty, will be parsed from @phoneNumber in message)
+              previewLinks
             );
 
             if (result.success) {
@@ -2134,12 +2190,18 @@ class WhatsAppSession {
               }
             }
 
+            // Send image with caption
+            // Mentions are automatically parsed from @phoneNumber in caption text
             const result = await this.sendImage(
               item.phone,
               item.imageUrl,
               item.caption || "",
               typingTime,
-              footerName
+              footerName,
+              true, // compress (default)
+              80, // quality (default)
+              [], // mentions array (empty, will be parsed from @phoneNumber in caption)
+              false // viewOnce (default)
             );
 
             if (result.success) {
@@ -2266,6 +2328,8 @@ class WhatsAppSession {
               }
             }
 
+            // Send document with caption
+            // Mentions are automatically parsed from @phoneNumber in caption text
             const result = await this.sendDocument(
               item.phone,
               item.documentUrl,
@@ -2273,7 +2337,9 @@ class WhatsAppSession {
               item.mimetype,
               item.caption || "",
               typingTime,
-              footerName
+              footerName,
+              [], // mentions array (empty, will be parsed from @phoneNumber in caption)
+              false // viewOnce (default)
             );
 
             if (result.success) {

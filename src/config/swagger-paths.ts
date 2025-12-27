@@ -861,14 +861,14 @@
  *   post:
  *     tags: [Messaging]
  *     summary: Send broadcast messages with anti-ban features
- *     description: "Send messages to multiple recipients with configurable delays, batch processing, and typing simulation to avoid WhatsApp bans. Includes random delays between messages and batch delays to mimic human behavior."
+ *     description: "Send messages (text, image, or document) to multiple recipients with configurable delays, batch processing, and typing simulation to avoid WhatsApp bans. Supports mentions via @phoneNumber and link previews for text messages."
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required: [sessionId, recipients, message]
+ *             required: [sessionId, recipients]
  *             properties:
  *               sessionId:
  *                 type: string
@@ -879,9 +879,31 @@
  *                   type: string
  *                 example: ["628123456789", "628987654321", "628111222333"]
  *                 description: Array of phone numbers or chat IDs
+ *               type:
+ *                 type: string
+ *                 enum: [text, image, document]
+ *                 example: text
+ *                 description: "Message type (default: text). For image/document, provide imageUrl/documentUrl respectively."
  *               message:
  *                 type: string
- *                 example: "Hello! This is a broadcast message."
+ *                 example: "Hello @628987654321! Check this: https://example.com"
+ *                 description: "Message text (for text type) or caption (for image/document type). Supports mentions via @phoneNumber pattern."
+ *               imageUrl:
+ *                 type: string
+ *                 example: "https://example.com/image.jpg"
+ *                 description: "Required for image type. Direct URL to image file."
+ *               documentUrl:
+ *                 type: string
+ *                 example: "https://example.com/document.pdf"
+ *                 description: "Required for document type. Direct URL to document file."
+ *               filename:
+ *                 type: string
+ *                 example: "document.pdf"
+ *                 description: "Required for document type. Document filename."
+ *               mimetype:
+ *                 type: string
+ *                 example: "application/pdf"
+ *                 description: "Document MIME type (default: application/pdf). Required for document type."
  *               typingTime:
  *                 type: integer
  *                 example: 1000
@@ -908,12 +930,23 @@
  *               checkNumber:
  *                 type: boolean
  *                 example: false
+ *               previewLinks:
+ *                 type: boolean
+ *                 example: false
+ *                 description: "Enable link preview generation for URLs in text messages (default: false). Only works for text type."
+ *               mentions:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["628987654321"]
+ *                 description: "Array of phone numbers to mention. Also supports @phoneNumber in message/caption text. Works in both personal and group chats."
  *           examples:
- *             default:
+ *             text:
  *               value:
  *                 sessionId: "mysession"
  *                 recipients: ["628123456789", "628987654321"]
- *                 message: "Hello! This is a broadcast message."
+ *                 type: "text"
+ *                 message: "Hello @628987654321! Check this: https://example.com"
  *                 typingTime: 1000
  *                 minDelay: 2000
  *                 maxDelay: 5000
@@ -921,6 +954,40 @@
  *                 batchDelay: 30000
  *                 footerName: "My Company"
  *                 checkNumber: false
+ *                 previewLinks: true
+ *                 mentions: ["628987654321"]
+ *             image:
+ *               value:
+ *                 sessionId: "mysession"
+ *                 recipients: ["628123456789", "628987654321"]
+ *                 type: "image"
+ *                 imageUrl: "https://example.com/image.jpg"
+ *                 message: "Check this out @628987654321!"
+ *                 typingTime: 1000
+ *                 minDelay: 2000
+ *                 maxDelay: 5000
+ *                 batchSize: 10
+ *                 batchDelay: 30000
+ *                 footerName: "My Company"
+ *                 checkNumber: false
+ *                 mentions: ["628987654321"]
+ *             document:
+ *               value:
+ *                 sessionId: "mysession"
+ *                 recipients: ["628123456789", "628987654321"]
+ *                 type: "document"
+ *                 documentUrl: "https://example.com/document.pdf"
+ *                 filename: "document.pdf"
+ *                 mimetype: "application/pdf"
+ *                 message: "See this @628987654321!"
+ *                 typingTime: 1000
+ *                 minDelay: 2000
+ *                 maxDelay: 5000
+ *                 batchSize: 10
+ *                 batchDelay: 30000
+ *                 footerName: "My Company"
+ *                 checkNumber: false
+ *                 mentions: ["628987654321"]
  *     responses:
  *       200:
  *         description: Broadcast completed
@@ -954,7 +1021,7 @@
  *   post:
  *     tags: [Messaging]
  *     summary: Bulk send text messages (different messages to different recipients)
- *     description: "Send different text messages to different recipients with anti-ban features. Each item in the array can have a different message."
+ *     description: "Send different text messages to different recipients with anti-ban features. Each item in the array can have a different message. Supports mentions via @phoneNumber in message text and link previews."
  *     requestBody:
  *       required: true
  *       content:
@@ -977,12 +1044,13 @@
  *                       example: "628123456789"
  *                     message:
  *                       type: string
- *                       example: "Hello! Your personalized message."
+ *                       example: "Hello @628987654321! Check this out: https://example.com"
+ *                       description: "Message text. Supports mentions via @phoneNumber pattern (e.g., @628123456789). URLs will generate previews if previewLinks is enabled."
  *                 example:
  *                   - phone: "628123456789"
- *                     message: "Hello User 1!"
+ *                     message: "Hello @628987654321! Check this: https://example.com"
  *                   - phone: "628987654321"
- *                     message: "Hello User 2!"
+ *                     message: "Hello @628123456789! Your message here."
  *               typingTime:
  *                 type: integer
  *                 example: 1000
@@ -1004,15 +1072,19 @@
  *               checkNumber:
  *                 type: boolean
  *                 example: false
+ *               previewLinks:
+ *                 type: boolean
+ *                 example: false
+ *                 description: "Enable link preview generation for URLs in messages (default: false). Requires link-preview-js dependency."
  *           examples:
  *             default:
  *               value:
  *                 sessionId: "mysession"
  *                 items:
  *                   - phone: "628123456789"
- *                     message: "Hello User 1!"
+ *                     message: "Hello @628987654321! Check this: https://example.com"
  *                   - phone: "628987654321"
- *                     message: "Hello User 2!"
+ *                     message: "Hello @628123456789! Your message here."
  *                 typingTime: 1000
  *                 minDelay: 2000
  *                 maxDelay: 5000
@@ -1020,6 +1092,7 @@
  *                 batchDelay: 30000
  *                 footerName: "My Company"
  *                 checkNumber: false
+ *                 previewLinks: true
  *     responses:
  *       200:
  *         description: Bulk send completed
@@ -1031,7 +1104,7 @@
  *   post:
  *     tags: [Messaging]
  *     summary: Bulk send image messages (different images to different recipients)
- *     description: "Send different images to different recipients with anti-ban features."
+ *     description: "Send different images to different recipients with anti-ban features. Supports mentions via @phoneNumber in caption text."
  *     requestBody:
  *       required: true
  *       content:
@@ -1057,7 +1130,8 @@
  *                       example: "https://example.com/image.jpg"
  *                     caption:
  *                       type: string
- *                       example: "Your image"
+ *                       example: "Check this out @628987654321!"
+ *                       description: "Image caption. Supports mentions via @phoneNumber pattern (e.g., @628123456789)."
  *               typingTime:
  *                 type: integer
  *                 example: 1000
@@ -1090,7 +1164,7 @@
  *   post:
  *     tags: [Messaging]
  *     summary: Bulk send document messages (different documents to different recipients)
- *     description: "Send different documents to different recipients with anti-ban features."
+ *     description: "Send different documents to different recipients with anti-ban features. Supports mentions via @phoneNumber in caption text."
  *     requestBody:
  *       required: true
  *       content:
@@ -1122,7 +1196,8 @@
  *                       example: "application/pdf"
  *                     caption:
  *                       type: string
- *                       example: "Your document"
+ *                       example: "See this @628987654321!"
+ *                       description: "Document caption. Supports mentions via @phoneNumber pattern (e.g., @628123456789)."
  *               typingTime:
  *                 type: integer
  *                 example: 1000

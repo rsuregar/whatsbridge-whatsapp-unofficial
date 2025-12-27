@@ -975,6 +975,13 @@ router.post(
         checkNumber = false,
         batchSize = 10,
         batchDelay = 30000,
+        type = "text",
+        imageUrl,
+        documentUrl,
+        filename,
+        mimetype = "application/pdf",
+        previewLinks = false,
+        mentions = [],
       } = req.body;
 
       if (
@@ -989,22 +996,33 @@ router.post(
         });
       }
 
-      if (!message) {
-        return res.status(400).json({
-          success: false,
-          message: "Missing required field: message",
-        });
+      // Validate based on type
+      if (type === "image") {
+        if (!imageUrl) {
+          return res.status(400).json({
+            success: false,
+            message: "Missing required field: imageUrl (required for image type)",
+          });
+        }
+      } else if (type === "document") {
+        if (!documentUrl || !filename) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Missing required fields: documentUrl and filename (required for document type)",
+          });
+        }
+      } else {
+        // text type
+        if (!message) {
+          return res.status(400).json({
+            success: false,
+            message: "Missing required field: message (required for text type)",
+          });
+        }
       }
 
-      // Validate batch size (max 50 per batch to avoid rate limiting)
-      const validatedBatchSize = Math.min(Math.max(1, batchSize || 10), 50);
-
-      // Validate delays
-      const validatedMinDelay = Math.max(1000, minDelay || 2000);
-      const validatedMaxDelay = Math.max(validatedMinDelay, maxDelay || 5000);
-      const validatedBatchDelay = Math.max(10000, batchDelay || 30000);
-
-      const result = await req.session!.sendBroadcast(recipients, message, {
+      const result = await req.session!.sendBroadcast(recipients, message || "", {
         typingTime,
         minDelay: validatedMinDelay,
         maxDelay: validatedMaxDelay,
@@ -1012,6 +1030,13 @@ router.post(
         checkNumber,
         batchSize: validatedBatchSize,
         batchDelay: validatedBatchDelay,
+        type,
+        imageUrl,
+        documentUrl,
+        filename,
+        mimetype,
+        previewLinks,
+        mentions,
       });
 
       return res.json(result);
@@ -1040,6 +1065,7 @@ router.post(
         checkNumber = false,
         batchSize = 10,
         batchDelay = 30000,
+        previewLinks = false,
       } = req.body;
 
       if (!items || !Array.isArray(items) || items.length === 0) {
@@ -1073,6 +1099,7 @@ router.post(
         checkNumber,
         batchSize: validatedBatchSize,
         batchDelay: validatedBatchDelay,
+        previewLinks,
       });
 
       return res.json(result);

@@ -2351,22 +2351,25 @@
                 body = { 
                     sessionId: '', 
                     recipients: ['628123456789', '628987654321'],
-                    message: 'Hello! This is a broadcast message.',
+                    type: 'text',
+                    message: 'Hello @628987654321! Check this: https://example.com',
                     typingTime: 1000,
                     minDelay: 2000,
                     maxDelay: 5000,
                     batchSize: 10,
                     batchDelay: 30000,
                     footerName: 'My Company',
-                    checkNumber: false
+                    checkNumber: false,
+                    previewLinks: false,
+                    mentions: []
                 };
-                helpText = '📢 <strong>Broadcast dengan Anti-Ban:</strong><br><code>recipients</code>: Array nomor telepon<br><code>typingTime</code>: Durasi typing sebelum setiap pesan (ms)<br><code>minDelay</code>: Delay minimum antar pesan (ms, default: 2000)<br><code>maxDelay</code>: Delay maksimum antar pesan (ms, default: 5000)<br><code>batchSize</code>: Jumlah pesan per batch (default: 10, max: 50)<br><code>batchDelay</code>: Delay antar batch (ms, default: 30000)<br>💡 <strong>Rekomendasi:</strong> Untuk broadcast besar, gunakan batchSize kecil (10-20) dan batchDelay panjang (30-60 detik) untuk menghindari ban.';
+                helpText = '📢 <strong>Broadcast dengan Anti-Ban:</strong><br><code>recipients</code>: Array nomor telepon<br><code>type</code>: "text" (default), "image", atau "document"<br><code>message</code>: Text message (untuk type text) atau caption (untuk image/document)<br><code>typingTime</code>: Durasi typing sebelum setiap pesan (ms)<br><code>minDelay</code>: Delay minimum antar pesan (ms, default: 2000)<br><code>maxDelay</code>: Delay maksimum antar pesan (ms, default: 5000)<br><code>batchSize</code>: Jumlah pesan per batch (default: 10, max: 50)<br><code>batchDelay</code>: Delay antar batch (ms, default: 30000)<br>💡 <strong>Type Image:</strong> Set <code>type: "image"</code> dan tambahkan <code>imageUrl</code>. <code>message</code> menjadi caption.<br>💡 <strong>Type Document:</strong> Set <code>type: "document"</code> dan tambahkan <code>documentUrl</code>, <code>filename</code>, <code>mimetype</code>. <code>message</code> menjadi caption.<br>💡 <strong>Mention:</strong> Gunakan <code>@phoneNumber</code> di message/caption atau berikan array <code>mentions</code>. Works in both personal and group chats.<br>💡 <strong>Link Preview:</strong> Set <code>previewLinks: true</code> untuk generate preview otomatis untuk URL (hanya untuk type text).<br>💡 <strong>Rekomendasi:</strong> Untuk broadcast besar, gunakan batchSize kecil (10-20) dan batchDelay panjang (30-60 detik) untuk menghindari ban.';
             } else if (path.includes('/chats/bulk-send-text')) {
                 body = { 
                     sessionId: '', 
                     items: [
-                        { phone: '628123456789', message: 'Hello User 1!' },
-                        { phone: '628987654321', message: 'Hello User 2!' }
+                        { phone: '628123456789', message: 'Hello @628987654321! Check this: https://example.com' },
+                        { phone: '628987654321', message: 'Hello @628123456789! Your message here.' }
                     ],
                     typingTime: 1000,
                     minDelay: 2000,
@@ -2374,15 +2377,16 @@
                     batchSize: 10,
                     batchDelay: 30000,
                     footerName: 'My Company',
-                    checkNumber: false
+                    checkNumber: false,
+                    previewLinks: false
                 };
-                helpText = '📦 <strong>Bulk Send Text (Pesan Berbeda):</strong><br><code>items</code>: Array object dengan <code>{phone, message}</code><br>Setiap item bisa memiliki pesan yang berbeda<br>Menggunakan mekanisme anti-ban yang sama seperti broadcast.';
+                helpText = '📦 <strong>Bulk Send Text (Pesan Berbeda):</strong><br><code>items</code>: Array object dengan <code>{phone, message}</code><br>Setiap item bisa memiliki pesan yang berbeda<br>Menggunakan mekanisme anti-ban yang sama seperti broadcast.<br>💡 <strong>Mention:</strong> Gunakan <code>@phoneNumber</code> di message text (contoh: "Hello @628123456789!")<br>💡 <strong>Link Preview:</strong> Set <code>previewLinks: true</code> untuk generate preview otomatis untuk URL di message.';
             } else if (path.includes('/chats/bulk-send-image')) {
                 body = { 
                     sessionId: '', 
                     items: [
-                        { phone: '628123456789', imageUrl: 'https://example.com/image1.jpg', caption: 'Image 1' },
-                        { phone: '628987654321', imageUrl: 'https://example.com/image2.jpg', caption: 'Image 2' }
+                        { phone: '628123456789', imageUrl: 'https://example.com/image1.jpg', caption: 'Check this out @628987654321!' },
+                        { phone: '628987654321', imageUrl: 'https://example.com/image2.jpg', caption: 'See this @628123456789!' }
                     ],
                     typingTime: 1000,
                     minDelay: 2000,
@@ -2392,13 +2396,13 @@
                     footerName: 'My Company',
                     checkNumber: false
                 };
-                helpText = '📦 <strong>Bulk Send Image:</strong><br><code>items</code>: Array object dengan <code>{phone, imageUrl, caption?}</code><br>Setiap item bisa memiliki image dan caption yang berbeda.';
+                helpText = '📦 <strong>Bulk Send Image:</strong><br><code>items</code>: Array object dengan <code>{phone, imageUrl, caption?}</code><br>Setiap item bisa memiliki image dan caption yang berbeda.<br>💡 <strong>Mention:</strong> Gunakan <code>@phoneNumber</code> di caption text (contoh: "Check this @628123456789!")<br>💡 <strong>Works in both personal and group chats:</strong> Mentions akan otomatis di-parse dan ditampilkan sebagai nama user.';
             } else if (path.includes('/chats/bulk-send-document')) {
                 body = { 
                     sessionId: '', 
                     items: [
-                        { phone: '628123456789', documentUrl: 'https://example.com/doc1.pdf', filename: 'document1.pdf', mimetype: 'application/pdf', caption: 'Doc 1' },
-                        { phone: '628987654321', documentUrl: 'https://example.com/doc2.pdf', filename: 'document2.pdf', mimetype: 'application/pdf', caption: 'Doc 2' }
+                        { phone: '628123456789', documentUrl: 'https://example.com/doc1.pdf', filename: 'document1.pdf', mimetype: 'application/pdf', caption: 'See this @628987654321!' },
+                        { phone: '628987654321', documentUrl: 'https://example.com/doc2.pdf', filename: 'document2.pdf', mimetype: 'application/pdf', caption: 'Check this @628123456789!' }
                     ],
                     typingTime: 1000,
                     minDelay: 2000,
@@ -2408,7 +2412,7 @@
                     footerName: 'My Company',
                     checkNumber: false
                 };
-                helpText = '📦 <strong>Bulk Send Document:</strong><br><code>items</code>: Array object dengan <code>{phone, documentUrl, filename, mimetype, caption?}</code><br>Setiap item bisa memiliki document yang berbeda.';
+                helpText = '📦 <strong>Bulk Send Document:</strong><br><code>items</code>: Array object dengan <code>{phone, documentUrl, filename, mimetype, caption?}</code><br>Setiap item bisa memiliki document yang berbeda.<br>💡 <strong>Mention:</strong> Gunakan <code>@phoneNumber</code> di caption text (contoh: "See this @628123456789!")<br>💡 <strong>Works in both personal and group chats:</strong> Mentions akan otomatis di-parse dan ditampilkan sebagai nama user.';
             } else if (path.includes('/chats/send-sticker')) {
                 body = { 
                     sessionId: '', 

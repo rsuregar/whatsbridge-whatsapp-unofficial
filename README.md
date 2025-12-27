@@ -779,35 +779,87 @@ POST /chats/extract-otp
 POST /chats/broadcast
 ```
 
-**Body:**
+**Body (Text Type):**
 
 ```json
 {
   "sessionId": "mysession",
   "recipients": ["628123456789", "628987654321", "628111222333"],
-  "message": "Hello! This is a broadcast message.",
+  "type": "text",
+  "message": "Hello @628987654321! Check this: https://example.com",
   "typingTime": 1000,
   "minDelay": 2000,
   "maxDelay": 5000,
   "batchSize": 10,
   "batchDelay": 30000,
   "footerName": "My Company",
-  "checkNumber": false
+  "checkNumber": false,
+  "previewLinks": true,
+  "mentions": ["628987654321"]
 }
 ```
 
-| Parameter     | Type    | Description                                                               |
-| ------------- | ------- | ------------------------------------------------------------------------- |
-| `sessionId`   | string  | Required. Session ID                                                      |
-| `recipients`  | array   | Required. Array of phone numbers or chat IDs                              |
-| `message`     | string  | Required. Message text to send                                            |
-| `typingTime`  | number  | Optional. Typing duration in ms before each message (default: 1000)       |
-| `minDelay`    | number  | Optional. Minimum random delay between messages in ms (default: 2000)     |
-| `maxDelay`    | number  | Optional. Maximum random delay between messages in ms (default: 5000)     |
-| `batchSize`   | number  | Optional. Number of messages per batch (default: 10, max: 50)             |
-| `batchDelay`  | number  | Optional. Delay between batches in ms (default: 30000)                    |
-| `footerName`  | string  | Optional. Footer name                                                     |
-| `checkNumber` | boolean | Optional. Check if numbers are registered before sending (default: false) |
+**Body (Image Type):**
+
+```json
+{
+  "sessionId": "mysession",
+  "recipients": ["628123456789", "628987654321"],
+  "type": "image",
+  "imageUrl": "https://example.com/image.jpg",
+  "message": "Check this out @628987654321!",
+  "typingTime": 1000,
+  "minDelay": 2000,
+  "maxDelay": 5000,
+  "batchSize": 10,
+  "batchDelay": 30000,
+  "footerName": "My Company",
+  "checkNumber": false,
+  "mentions": ["628987654321"]
+}
+```
+
+**Body (Document Type):**
+
+```json
+{
+  "sessionId": "mysession",
+  "recipients": ["628123456789", "628987654321"],
+  "type": "document",
+  "documentUrl": "https://example.com/document.pdf",
+  "filename": "document.pdf",
+  "mimetype": "application/pdf",
+  "message": "See this @628987654321!",
+  "typingTime": 1000,
+  "minDelay": 2000,
+  "maxDelay": 5000,
+  "batchSize": 10,
+  "batchDelay": 30000,
+  "footerName": "My Company",
+  "checkNumber": false,
+  "mentions": ["628987654321"]
+}
+```
+
+| Parameter      | Type    | Description                                                                                                                                |
+| -------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `sessionId`    | string  | Required. Session ID                                                                                                                       |
+| `recipients`   | array   | Required. Array of phone numbers or chat IDs                                                                                               |
+| `type`         | string  | Optional. Message type: `"text"` (default), `"image"`, or `"document"`                                                                     |
+| `message`      | string  | Required for text type. Message text or caption (for image/document). Supports `@phoneNumber` for mentions                                 |
+| `imageUrl`     | string  | Required for image type. Direct URL to image file                                                                                          |
+| `documentUrl`  | string  | Required for document type. Direct URL to document file                                                                                    |
+| `filename`     | string  | Required for document type. Document filename                                                                                              |
+| `mimetype`     | string  | Optional for document type. Document MIME type (default: application/pdf)                                                                  |
+| `typingTime`   | number  | Optional. Typing duration in ms before each message (default: 1000)                                                                        |
+| `minDelay`     | number  | Optional. Minimum random delay between messages in ms (default: 2000)                                                                      |
+| `maxDelay`     | number  | Optional. Maximum random delay between messages in ms (default: 5000)                                                                      |
+| `batchSize`    | number  | Optional. Number of messages per batch (default: 10, max: 50)                                                                              |
+| `batchDelay`   | number  | Optional. Delay between batches in ms (default: 30000)                                                                                     |
+| `footerName`   | string  | Optional. Footer name                                                                                                                      |
+| `checkNumber`  | boolean | Optional. Check if numbers are registered before sending (default: false)                                                                  |
+| `previewLinks` | boolean | Optional. Enable link preview generation for URLs in text messages (default: false). Only works for text type.                             |
+| `mentions`     | array   | Optional. Array of phone numbers to mention. Also supports `@phoneNumber` in message/caption text. Works in both personal and group chats. |
 
 **Response:**
 
@@ -838,6 +890,27 @@ POST /chats/broadcast
 - ✅ **Batch Processing**: Processes messages in batches to avoid overwhelming WhatsApp
 - ✅ **Batch Delays**: Longer delays between batches to avoid rate limiting
 - ✅ **Number Validation**: Optional check to verify numbers before sending
+
+**Message Types:**
+
+- **Text**: Send text messages with optional link previews and mentions
+- **Image**: Broadcast images with captions and mentions
+- **Document**: Broadcast documents (PDF, etc.) with captions and mentions
+
+**Mention Feature:**
+
+- Mention users by including `@phoneNumber` in the message/caption text
+- Example: `"message": "Hello @628123456789, @628987654321!"` or `"message": "Check this @628123456789!"` (for image/document captions)
+- Alternatively, provide a `mentions` array in the request body
+- Works in both personal chats and group chats
+- Phone numbers are automatically parsed to JID format (`phoneNumber@s.whatsapp.net`)
+- For group chats, mentions are validated against group participants to display user names
+
+**Link Preview (Text Type Only):**
+
+- Set `previewLinks: true` to enable automatic link preview generation for URLs in text messages
+- Requires `link-preview-js` dependency
+- When enabled, Baileys will automatically generate preview cards for URLs in the message
 
 **Recommended Settings for Large Broadcasts:**
 
@@ -874,21 +947,30 @@ POST /chats/bulk-send-text
   "batchSize": 10,
   "batchDelay": 30000,
   "footerName": "My Company",
-  "checkNumber": false
+  "checkNumber": false,
+  "previewLinks": true
 }
 ```
 
-| Parameter     | Type    | Description                                                               |
-| ------------- | ------- | ------------------------------------------------------------------------- |
-| `sessionId`   | string  | Required. Session ID                                                      |
-| `items`       | array   | Required. Array of objects with `{phone, message}`                        |
-| `typingTime`  | number  | Optional. Typing duration in ms (default: 1000)                           |
-| `minDelay`    | number  | Optional. Minimum random delay between messages in ms (default: 2000)     |
-| `maxDelay`    | number  | Optional. Maximum random delay between messages in ms (default: 5000)     |
-| `batchSize`   | number  | Optional. Number of messages per batch (default: 10, max: 50)             |
-| `batchDelay`  | number  | Optional. Delay between batches in ms (default: 30000)                    |
-| `footerName`  | string  | Optional. Footer name                                                     |
-| `checkNumber` | boolean | Optional. Check if numbers are registered before sending (default: false) |
+| Parameter      | Type    | Description                                                                                                            |
+| -------------- | ------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `sessionId`    | string  | Required. Session ID                                                                                                   |
+| `items`        | array   | Required. Array of objects with `{phone, message}`                                                                     |
+| `typingTime`   | number  | Optional. Typing duration in ms (default: 1000)                                                                        |
+| `minDelay`     | number  | Optional. Minimum random delay between messages in ms (default: 2000)                                                  |
+| `maxDelay`     | number  | Optional. Maximum random delay between messages in ms (default: 5000)                                                  |
+| `batchSize`    | number  | Optional. Number of messages per batch (default: 10, max: 50)                                                          |
+| `batchDelay`   | number  | Optional. Delay between batches in ms (default: 30000)                                                                 |
+| `footerName`   | string  | Optional. Footer name                                                                                                  |
+| `checkNumber`  | boolean | Optional. Check if numbers are registered before sending (default: false)                                              |
+| `previewLinks` | boolean | Optional. Enable link preview generation for URLs in messages (default: false). Requires `link-preview-js` dependency. |
+
+**Mention Feature:**
+
+- Mention users by including `@phoneNumber` in the message text
+- Example: `"message": "Hello @628123456789, @628987654321!"`
+- Works in both personal chats and group chats
+- Phone numbers are automatically parsed to JID format (`phoneNumber@s.whatsapp.net`)
 
 **Response:**
 
@@ -927,25 +1009,41 @@ POST /chats/bulk-send-image
     {
       "phone": "628123456789",
       "imageUrl": "https://example.com/image1.jpg",
-      "caption": "Your personalized image"
+      "caption": "Check this out @628987654321!"
     },
     {
       "phone": "628987654321",
       "imageUrl": "https://example.com/image2.jpg",
-      "caption": "Another image"
+      "caption": "See this @628123456789!"
     }
   ],
   "typingTime": 1000,
   "minDelay": 2000,
   "maxDelay": 5000,
   "batchSize": 10,
-  "batchDelay": 30000
+  "batchDelay": 30000,
+  "footerName": "My Company",
+  "checkNumber": false
 }
 ```
 
-| Parameter | Type  | Description                                                   |
-| --------- | ----- | ------------------------------------------------------------- |
-| `items`   | array | Required. Array of objects with `{phone, imageUrl, caption?}` |
+| Parameter     | Type    | Description                                                               |
+| ------------- | ------- | ------------------------------------------------------------------------- |
+| `items`       | array   | Required. Array of objects with `{phone, imageUrl, caption?}`             |
+| `typingTime`  | number  | Optional. Typing duration in ms (default: 1000)                           |
+| `minDelay`    | number  | Optional. Minimum random delay between messages in ms (default: 2000)     |
+| `maxDelay`    | number  | Optional. Maximum random delay between messages in ms (default: 5000)     |
+| `batchSize`   | number  | Optional. Number of messages per batch (default: 10, max: 50)             |
+| `batchDelay`  | number  | Optional. Delay between batches in ms (default: 30000)                    |
+| `footerName`  | string  | Optional. Footer name                                                     |
+| `checkNumber` | boolean | Optional. Check if numbers are registered before sending (default: false) |
+
+**Mention Feature:**
+
+- Mention users by including `@phoneNumber` in the caption text
+- Example: `"caption": "Check this out @628123456789!"`
+- Works in both personal chats and group chats
+- Phone numbers are automatically parsed to JID format (`phoneNumber@s.whatsapp.net`)
 
 #### Bulk Send Document (Different Documents)
 
@@ -964,27 +1062,43 @@ POST /chats/bulk-send-document
       "documentUrl": "https://example.com/invoice1.pdf",
       "filename": "invoice1.pdf",
       "mimetype": "application/pdf",
-      "caption": "Your invoice"
+      "caption": "See this @628987654321!"
     },
     {
       "phone": "628987654321",
       "documentUrl": "https://example.com/invoice2.pdf",
       "filename": "invoice2.pdf",
       "mimetype": "application/pdf",
-      "caption": "Your invoice"
+      "caption": "Check this @628123456789!"
     }
   ],
   "typingTime": 1000,
   "minDelay": 2000,
   "maxDelay": 5000,
   "batchSize": 10,
-  "batchDelay": 30000
+  "batchDelay": 30000,
+  "footerName": "My Company",
+  "checkNumber": false
 }
 ```
 
-| Parameter | Type  | Description                                                                          |
-| --------- | ----- | ------------------------------------------------------------------------------------ |
-| `items`   | array | Required. Array of objects with `{phone, documentUrl, filename, mimetype, caption?}` |
+| Parameter     | Type    | Description                                                                          |
+| ------------- | ------- | ------------------------------------------------------------------------------------ |
+| `items`       | array   | Required. Array of objects with `{phone, documentUrl, filename, mimetype, caption?}` |
+| `typingTime`  | number  | Optional. Typing duration in ms (default: 1000)                                      |
+| `minDelay`    | number  | Optional. Minimum random delay between messages in ms (default: 2000)                |
+| `maxDelay`    | number  | Optional. Maximum random delay between messages in ms (default: 5000)                |
+| `batchSize`   | number  | Optional. Number of messages per batch (default: 10, max: 50)                        |
+| `batchDelay`  | number  | Optional. Delay between batches in ms (default: 30000)                               |
+| `footerName`  | string  | Optional. Footer name                                                                |
+| `checkNumber` | boolean | Optional. Check if numbers are registered before sending (default: false)            |
+
+**Mention Feature:**
+
+- Mention users by including `@phoneNumber` in the caption text
+- Example: `"caption": "See this @628123456789!"`
+- Works in both personal chats and group chats
+- Phone numbers are automatically parsed to JID format (`phoneNumber@s.whatsapp.net`)
 
 **Note:** Bulk send endpoints support the same anti-ban features as broadcast (random delays, batch processing, typing simulation).
 
