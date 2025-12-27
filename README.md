@@ -14,13 +14,20 @@ A powerful WhatsApp API backend built with TypeScript, Express.js, and Baileys l
 - 📱 **Multi-Session Support** - Manage multiple WhatsApp accounts simultaneously
 - 🔌 **Real-time WebSocket** - Get instant notifications for messages, status updates, and more
 - 👥 **Group Management** - Create, manage, and control WhatsApp groups
-- 📨 **Send Messages** - Text, images, documents, locations, contacts, and buttons
+- 📨 **Send Messages** - Text, images, documents, locations, contacts, buttons, stickers, and status
 - 📥 **Auto-Save Media** - Automatically save incoming media to server
 - 💾 **Persistent Store** - Message history with optimized caching
 - 🔐 **Session Persistence** - Sessions survive server restarts
 - 🎛️ **Admin Dashboard** - Web-based dashboard with real-time monitoring and API tester
 - 🔑 **API Key Management** - Generate and manage custom API keys from the dashboard
 - 💻 **TypeScript** - Full TypeScript support for type safety and better developer experience
+- 🖼️ **Image Compression** - Automatically compress images before sending to reduce file size
+- 🎨 **Sticker Support** - Convert images to WhatsApp sticker format (WebP 512x512)
+- 💬 **Auto Reply** - Automatically reply to incoming messages
+- ✅ **Auto Mark Read** - Automatically mark incoming messages as read
+- @ **Mention Support** - Mention users in group messages using @phoneNumber
+- 📱 **Custom Device Name** - Set custom device/OS name when connecting
+- 📊 **Status Posting** - Post images and videos to WhatsApp status
 
 ## 📋 Table of Contents
 
@@ -119,6 +126,15 @@ API_KEY=your_secret_api_key_here
 
 # Whitelabel Footer (optional - footer name for all messages)
 MESSAGE_FOOTER=My Company Name
+
+# Auto Reply (optional - auto reply message for incoming messages)
+AUTO_REPLY=Thank you for your message. We'll get back to you soon.
+
+# Auto Mark Read (optional - automatically mark messages as read)
+AUTO_MARK_READ=true
+
+# Device Name (optional - custom device/OS name when connecting)
+DEVICE_NAME=WhatsBridge API
 ```
 
 ## 🔐 API Key Authentication
@@ -459,21 +475,24 @@ POST /chats/send-text
 {
   "sessionId": "mysession",
   "chatId": "628123456789",
-  "message": "Hello, World!",
+  "message": "Hello, World! Check this out: https://example.com",
   "footerName": "My Company",
   "typingTime": 2000,
-  "checkNumber": true
+  "checkNumber": true,
+  "previewLinks": true
 }
 ```
 
-| Parameter     | Type    | Description                                                                               |
-| ------------- | ------- | ----------------------------------------------------------------------------------------- |
-| `sessionId`   | string  | Required. Session ID                                                                      |
-| `chatId`      | string  | Required. Phone number (628xxx) or group ID (xxx@g.us)                                    |
-| `message`     | string  | Required. Text message to send                                                            |
-| `footerName`  | string  | Optional. Footer name (overrides metadata/env, format: `> _footerName_`)                  |
-| `typingTime`  | number  | Optional. Typing duration in ms before sending (default: 0)                               |
-| `checkNumber` | boolean | Optional. If `true`, checks if phone number is registered before sending (default: false) |
+| Parameter      | Type    | Description                                                                                                                                                                                                    |
+| -------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sessionId`    | string  | Required. Session ID                                                                                                                                                                                           |
+| `chatId`       | string  | Required. Phone number (628xxx) or group ID (xxx@g.us)                                                                                                                                                         |
+| `message`      | string  | Required. Text message to send                                                                                                                                                                                 |
+| `footerName`   | string  | Optional. Footer name (overrides metadata/env, format: `> _footerName_`)                                                                                                                                       |
+| `typingTime`   | number  | Optional. Typing duration in ms before sending (default: 0)                                                                                                                                                    |
+| `checkNumber`  | boolean | Optional. If `true`, checks if phone number is registered before sending (default: false)                                                                                                                      |
+| `mentions`     | array   | Optional. Array of phone numbers to mention (e.g., `["628123456789"]`). Also supports `@phoneNumber` in message text                                                                                           |
+| `previewLinks` | boolean | Optional. Enable link preview generation for URLs in message (default: false). Requires `link-preview-js` dependency. When enabled, Baileys will automatically generate preview cards for URLs in the message. |
 
 **Error Response (when checkNumber is true and number is not registered):**
 
@@ -500,24 +519,47 @@ POST /chats/send-image
 ```json
 {
   "sessionId": "mysession",
-  "chatId": "628123456789",
+  "chatId": "123456789@g.us",
   "imageUrl": "https://example.com/image.jpg",
-  "caption": "Check this out!",
+  "caption": "Check this out @628123456789, @628987654321!",
   "footerName": "My Company",
   "typingTime": 1500,
-  "checkNumber": true
+  "checkNumber": true,
+  "compress": true,
+  "quality": 80,
+  "mentions": []
 }
 ```
 
-| Parameter     | Type    | Description                                              |
-| ------------- | ------- | -------------------------------------------------------- |
-| `sessionId`   | string  | Required. Session ID                                     |
-| `chatId`      | string  | Required. Phone number (628xxx) or group ID              |
-| `imageUrl`    | string  | Required. Direct URL to image file                       |
-| `caption`     | string  | Optional. Image caption                                  |
-| `footerName`  | string  | Optional. Footer name (appended to caption)              |
-| `typingTime`  | number  | Optional. Typing duration in ms (default: 0)             |
-| `checkNumber` | boolean | Optional. Check if number is registered (default: false) |
+| Parameter     | Type    | Description                                                                               |
+| ------------- | ------- | ----------------------------------------------------------------------------------------- |
+| `sessionId`   | string  | Required. Session ID                                                                      |
+| `chatId`      | string  | Required. Phone number (628xxx) or group ID                                               |
+| `imageUrl`    | string  | Required. Direct URL to image file                                                        |
+| `caption`     | string  | Optional. Image caption                                                                   |
+| `footerName`  | string  | Optional. Footer name (appended to caption)                                               |
+| `typingTime`  | number  | Optional. Typing duration in ms (default: 0)                                              |
+| `checkNumber` | boolean | Optional. Check if number is registered (default: false)                                  |
+| `compress`    | boolean | Optional. Compress image before sending (default: true)                                   |
+| `quality`     | number  | Optional. Image quality 1-100 (default: 80)                                               |
+| `mentions`    | array   | Optional. Array of phone numbers to mention. Also supports `@phoneNumber` in caption text |
+
+**Image Compression:**
+
+- Images are automatically compressed before sending (default: enabled)
+- Compression reduces file size while maintaining good quality
+- Adjustable quality (1-100, default: 80)
+- Set `compress: false` to disable compression
+- Maximum dimensions: 1920x1920 pixels (maintains aspect ratio)
+
+**Mention Feature:**
+
+- Mention users by including `@phoneNumber` in the message/caption text
+- Example: `"message": "Hello @628123456789, @628987654321!"` or `"caption": "Check this @628123456789!"`
+- Alternatively, provide a `mentions` array in the request body
+- Works in both personal chats and group chats
+- Phone numbers are automatically parsed to JID format (`phoneNumber@s.whatsapp.net`)
+- For group chats, mentions are validated against group participants to display user names
 
 #### Send Document
 
@@ -534,23 +576,25 @@ POST /chats/send-document
   "documentUrl": "https://example.com/document.pdf",
   "filename": "document.pdf",
   "mimetype": "application/pdf",
-  "caption": "Optional document caption",
+  "caption": "Please review @628123456789, @628987654321!",
   "typingTime": 1000,
-  "checkNumber": true
+  "checkNumber": true,
+  "mentions": []
 }
 ```
 
-| Parameter     | Type    | Description                                              |
-| ------------- | ------- | -------------------------------------------------------- |
-| `sessionId`   | string  | Required. Session ID                                     |
-| `chatId`      | string  | Required. Phone number (628xxx) or group ID              |
-| `documentUrl` | string  | Required. Direct URL to document                         |
-| `filename`    | string  | Required. Filename to display                            |
-| `mimetype`    | string  | Optional. MIME type (default: application/pdf)           |
-| `caption`     | string  | Optional. Document caption text                          |
-| `footerName`  | string  | Optional. Footer name (appended to caption)              |
-| `typingTime`  | number  | Optional. Typing duration in ms (default: 0)             |
-| `checkNumber` | boolean | Optional. Check if number is registered (default: false) |
+| Parameter     | Type    | Description                                                                               |
+| ------------- | ------- | ----------------------------------------------------------------------------------------- |
+| `sessionId`   | string  | Required. Session ID                                                                      |
+| `chatId`      | string  | Required. Phone number (628xxx) or group ID                                               |
+| `documentUrl` | string  | Required. Direct URL to document                                                          |
+| `filename`    | string  | Required. Filename to display                                                             |
+| `mimetype`    | string  | Optional. MIME type (default: application/pdf)                                            |
+| `caption`     | string  | Optional. Document caption text                                                           |
+| `footerName`  | string  | Optional. Footer name (appended to caption)                                               |
+| `typingTime`  | number  | Optional. Typing duration in ms (default: 0)                                              |
+| `checkNumber` | boolean | Optional. Check if number is registered (default: false)                                  |
+| `mentions`    | array   | Optional. Array of phone numbers to mention. Also supports `@phoneNumber` in caption text |
 
 #### Send Location
 
@@ -690,6 +734,8 @@ POST /chats/send-otp
 
 **Note:** The OTP is sent as a simple text message with the code on a separate line, making it easy for users to select and copy the OTP directly from WhatsApp. The default format is "Paste kode OTP" followed by the OTP code.
 
+**Mention Feature:** You can mention users by including `@phoneNumber` in the message text. Example: `"Hello @628123456789, @628987654321"`. The API will automatically parse phone numbers to JID format (`phoneNumber@s.whatsapp.net`) and mention these users. Works in both personal chats and group chats. For group chats, mentions are validated against group participants to display user names instead of phone numbers. Alternatively, you can provide a `mentions` array in the request body.
+
 #### Extract OTP from Message
 
 ```http
@@ -726,6 +772,303 @@ POST /chats/extract-otp
 - `"123456 is your code"`
 - `"Copy Code: 123456"` (from button messages)
 - Standalone 4-8 digit numbers
+
+#### Send Broadcast (Anti-Ban)
+
+```http
+POST /chats/broadcast
+```
+
+**Body:**
+
+```json
+{
+  "sessionId": "mysession",
+  "recipients": ["628123456789", "628987654321", "628111222333"],
+  "message": "Hello! This is a broadcast message.",
+  "typingTime": 1000,
+  "minDelay": 2000,
+  "maxDelay": 5000,
+  "batchSize": 10,
+  "batchDelay": 30000,
+  "footerName": "My Company",
+  "checkNumber": false
+}
+```
+
+| Parameter     | Type    | Description                                                               |
+| ------------- | ------- | ------------------------------------------------------------------------- |
+| `sessionId`   | string  | Required. Session ID                                                      |
+| `recipients`  | array   | Required. Array of phone numbers or chat IDs                              |
+| `message`     | string  | Required. Message text to send                                            |
+| `typingTime`  | number  | Optional. Typing duration in ms before each message (default: 1000)       |
+| `minDelay`    | number  | Optional. Minimum random delay between messages in ms (default: 2000)     |
+| `maxDelay`    | number  | Optional. Maximum random delay between messages in ms (default: 5000)     |
+| `batchSize`   | number  | Optional. Number of messages per batch (default: 10, max: 50)             |
+| `batchDelay`  | number  | Optional. Delay between batches in ms (default: 30000)                    |
+| `footerName`  | string  | Optional. Footer name                                                     |
+| `checkNumber` | boolean | Optional. Check if numbers are registered before sending (default: false) |
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Broadcast completed: 3 sent, 0 failed",
+  "data": {
+    "total": 3,
+    "success": 3,
+    "failed": 0,
+    "results": [
+      {
+        "recipient": "628123456789",
+        "messageId": "ABC123",
+        "timestamp": "2024-01-15T10:30:00.000Z"
+      }
+    ],
+    "errors": []
+  }
+}
+```
+
+**Anti-Ban Features:**
+
+- ✅ **Typing Simulation**: Simulates typing before each message
+- ✅ **Random Delays**: Random delay between messages (minDelay to maxDelay)
+- ✅ **Batch Processing**: Processes messages in batches to avoid overwhelming WhatsApp
+- ✅ **Batch Delays**: Longer delays between batches to avoid rate limiting
+- ✅ **Number Validation**: Optional check to verify numbers before sending
+
+**Recommended Settings for Large Broadcasts:**
+
+- `typingTime`: 1000-2000ms (simulates human typing)
+- `minDelay`: 2000-3000ms (minimum wait between messages)
+- `maxDelay`: 5000-8000ms (maximum wait between messages)
+- `batchSize`: 10-20 (smaller batches = safer)
+- `batchDelay`: 30000-60000ms (30-60 seconds between batches)
+
+#### Bulk Send Text (Different Messages)
+
+```http
+POST /chats/bulk-send-text
+```
+
+**Body:**
+
+```json
+{
+  "sessionId": "mysession",
+  "items": [
+    {
+      "phone": "628123456789",
+      "message": "Hello User 1! Your order is ready."
+    },
+    {
+      "phone": "628987654321",
+      "message": "Hello User 2! Your payment is confirmed."
+    }
+  ],
+  "typingTime": 1000,
+  "minDelay": 2000,
+  "maxDelay": 5000,
+  "batchSize": 10,
+  "batchDelay": 30000,
+  "footerName": "My Company",
+  "checkNumber": false
+}
+```
+
+| Parameter     | Type    | Description                                                               |
+| ------------- | ------- | ------------------------------------------------------------------------- |
+| `sessionId`   | string  | Required. Session ID                                                      |
+| `items`       | array   | Required. Array of objects with `{phone, message}`                        |
+| `typingTime`  | number  | Optional. Typing duration in ms (default: 1000)                           |
+| `minDelay`    | number  | Optional. Minimum random delay between messages in ms (default: 2000)     |
+| `maxDelay`    | number  | Optional. Maximum random delay between messages in ms (default: 5000)     |
+| `batchSize`   | number  | Optional. Number of messages per batch (default: 10, max: 50)             |
+| `batchDelay`  | number  | Optional. Delay between batches in ms (default: 30000)                    |
+| `footerName`  | string  | Optional. Footer name                                                     |
+| `checkNumber` | boolean | Optional. Check if numbers are registered before sending (default: false) |
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Bulk send completed: 2 sent, 0 failed",
+  "data": {
+    "total": 2,
+    "success": 2,
+    "failed": 0,
+    "results": [
+      {
+        "phone": "628123456789",
+        "messageId": "ABC123",
+        "timestamp": "2024-01-15T10:30:00.000Z"
+      }
+    ],
+    "errors": []
+  }
+}
+```
+
+#### Bulk Send Image (Different Images)
+
+```http
+POST /chats/bulk-send-image
+```
+
+**Body:**
+
+```json
+{
+  "sessionId": "mysession",
+  "items": [
+    {
+      "phone": "628123456789",
+      "imageUrl": "https://example.com/image1.jpg",
+      "caption": "Your personalized image"
+    },
+    {
+      "phone": "628987654321",
+      "imageUrl": "https://example.com/image2.jpg",
+      "caption": "Another image"
+    }
+  ],
+  "typingTime": 1000,
+  "minDelay": 2000,
+  "maxDelay": 5000,
+  "batchSize": 10,
+  "batchDelay": 30000
+}
+```
+
+| Parameter | Type  | Description                                                   |
+| --------- | ----- | ------------------------------------------------------------- |
+| `items`   | array | Required. Array of objects with `{phone, imageUrl, caption?}` |
+
+#### Bulk Send Document (Different Documents)
+
+```http
+POST /chats/bulk-send-document
+```
+
+**Body:**
+
+```json
+{
+  "sessionId": "mysession",
+  "items": [
+    {
+      "phone": "628123456789",
+      "documentUrl": "https://example.com/invoice1.pdf",
+      "filename": "invoice1.pdf",
+      "mimetype": "application/pdf",
+      "caption": "Your invoice"
+    },
+    {
+      "phone": "628987654321",
+      "documentUrl": "https://example.com/invoice2.pdf",
+      "filename": "invoice2.pdf",
+      "mimetype": "application/pdf",
+      "caption": "Your invoice"
+    }
+  ],
+  "typingTime": 1000,
+  "minDelay": 2000,
+  "maxDelay": 5000,
+  "batchSize": 10,
+  "batchDelay": 30000
+}
+```
+
+| Parameter | Type  | Description                                                                          |
+| --------- | ----- | ------------------------------------------------------------------------------------ |
+| `items`   | array | Required. Array of objects with `{phone, documentUrl, filename, mimetype, caption?}` |
+
+**Note:** Bulk send endpoints support the same anti-ban features as broadcast (random delays, batch processing, typing simulation).
+
+#### Send Sticker
+
+```http
+POST /chats/send-sticker
+```
+
+**Body:**
+
+```json
+{
+  "sessionId": "mysession",
+  "chatId": "628123456789",
+  "imageUrl": "https://example.com/image.jpg",
+  "typingTime": 1000
+}
+```
+
+| Parameter    | Type   | Description                                                             |
+| ------------ | ------ | ----------------------------------------------------------------------- |
+| `sessionId`  | string | Required. Session ID                                                    |
+| `chatId`     | string | Required. Phone number (628xxx) or group ID (xxx@g.us)                  |
+| `imageUrl`   | string | Required. Direct URL to image file (supports JPG, JPEG, PNG, WebP, GIF) |
+| `typingTime` | number | Optional. Typing duration in ms (default: 0)                            |
+
+**Features:**
+
+- Automatically converts image to WebP sticker format (512x512 pixels)
+- Supports JPG, JPEG, PNG, WebP, and GIF formats
+- Preserves transparency for PNG images
+- Resizes images to 512x512 while maintaining aspect ratio
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Sticker sent successfully",
+  "data": {
+    "messageId": "ABC123",
+    "chatId": "628123456789@s.whatsapp.net",
+    "timestamp": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+#### Post WhatsApp Status
+
+```http
+POST /status/post
+```
+
+**Body:**
+
+```json
+{
+  "sessionId": "mysession",
+  "mediaUrl": "https://example.com/image.jpg",
+  "caption": "Check out my status!",
+  "type": "image"
+}
+```
+
+| Parameter   | Type   | Description                                 |
+| ----------- | ------ | ------------------------------------------- |
+| `sessionId` | string | Required. Session ID                        |
+| `mediaUrl`  | string | Required. Direct URL to image or video file |
+| `caption`   | string | Optional. Status caption                    |
+| `type`      | string | Required. `image` or `video`                |
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Status posted successfully",
+  "data": {
+    "messageId": "ABC123",
+    "timestamp": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
 
 #### Send Presence Update
 
@@ -778,6 +1121,224 @@ POST /chats/profile-picture
   "phone": "628123456789"
 }
 ```
+
+---
+
+### Profile & Settings
+
+#### Update Profile Name (PushName)
+
+```http
+POST /profile/update-name
+```
+
+**Body:**
+
+```json
+{
+  "sessionId": "mysession",
+  "name": "John Doe"
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Profile name updated successfully",
+  "data": {
+    "name": "John Doe"
+  }
+}
+```
+
+#### Update Device Name (OS Name)
+
+```http
+POST /profile/update-device-name
+```
+
+**Body:**
+
+```json
+{
+  "sessionId": "mysession",
+  "deviceName": "My Custom App"
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Device name updated. Reconnect session to apply changes.",
+  "data": {
+    "deviceName": "My Custom App"
+  }
+}
+```
+
+**Note:** Device name is set during connection. You need to reconnect the session for changes to take effect. The device name appears when connecting via mobile WhatsApp.
+
+**Environment Variable:** You can also set default device name via `DEVICE_NAME` environment variable.
+
+#### Update Auto Reply
+
+```http
+POST /profile/update-auto-reply
+```
+
+**Body:**
+
+```json
+{
+  "sessionId": "mysession",
+  "autoReply": "Thank you for your message. We'll get back to you soon."
+}
+```
+
+**To disable auto reply:**
+
+```json
+{
+  "sessionId": "mysession",
+  "autoReply": null
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Auto reply updated",
+  "data": {
+    "autoReply": "Thank you for your message. We'll get back to you soon."
+  }
+}
+```
+
+**Note:** Auto reply only works for personal messages (not group messages). Set `autoReply` to `null` to disable.
+
+**Environment Variable:** You can also set default auto reply via `AUTO_REPLY` environment variable.
+
+#### Update Auto Mark Read
+
+```http
+POST /profile/update-auto-mark-read
+```
+
+**Body:**
+
+```json
+{
+  "sessionId": "mysession",
+  "autoMarkRead": true
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Auto mark read updated",
+  "data": {
+    "autoMarkRead": true
+  }
+}
+```
+
+**Note:** When enabled, all incoming messages will be automatically marked as read.
+
+**Environment Variable:** You can also set default via `AUTO_MARK_READ=true` environment variable.
+
+---
+
+### Profile & Settings
+
+#### Update Profile Name (PushName)
+
+```http
+POST /profile/update-name
+```
+
+**Body:**
+
+```json
+{
+  "sessionId": "mysession",
+  "name": "John Doe"
+}
+```
+
+#### Update Device Name (OS Name)
+
+```http
+POST /profile/update-device-name
+```
+
+**Body:**
+
+```json
+{
+  "sessionId": "mysession",
+  "deviceName": "My Custom App"
+}
+```
+
+**Note:** Device name is set during connection. You need to reconnect the session for changes to take effect. The device name appears when connecting via mobile WhatsApp.
+
+**Environment Variable:** You can also set default device name via `DEVICE_NAME` environment variable.
+
+#### Update Auto Reply
+
+```http
+POST /profile/update-auto-reply
+```
+
+**Body:**
+
+```json
+{
+  "sessionId": "mysession",
+  "autoReply": "Thank you for your message. We'll get back to you soon."
+}
+```
+
+**To disable auto reply:**
+
+```json
+{
+  "sessionId": "mysession",
+  "autoReply": null
+}
+```
+
+**Note:** Auto reply only works for personal messages (not group messages). Set `autoReply` to `null` to disable.
+
+**Environment Variable:** You can also set default auto reply via `AUTO_REPLY` environment variable.
+
+#### Update Auto Mark Read
+
+```http
+POST /profile/update-auto-mark-read
+```
+
+**Body:**
+
+```json
+{
+  "sessionId": "mysession",
+  "autoMarkRead": true
+}
+```
+
+**Note:** When enabled, all incoming messages will be automatically marked as read.
+
+**Environment Variable:** You can also set default via `AUTO_MARK_READ=true` environment variable.
 
 ---
 

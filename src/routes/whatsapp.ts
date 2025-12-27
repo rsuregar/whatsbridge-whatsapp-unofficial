@@ -364,6 +364,42 @@ const checkSession = (
   next();
 };
 
+// Request Pairing Code
+router.post(
+  "/sessions/:sessionId/pairing-code",
+  async (req: Request, res: Response) => {
+    try {
+      const { sessionId } = req.params;
+      const { phoneNumber } = req.body;
+
+      if (!phoneNumber) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required field: phoneNumber",
+        });
+      }
+
+      // Get session from sessionId in URL params
+      const session = whatsappManager.getSession(sessionId);
+      if (!session) {
+        return res.status(404).json({
+          success: false,
+          message: "Session not found",
+        });
+      }
+
+      const result = await session.requestPairingCode(phoneNumber);
+      return res.json(result);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+      return;
+    }
+  }
+);
+
 /**
  * Helper function to check if a phone number is registered on WhatsApp
  * @param session - WhatsApp session instance
@@ -413,6 +449,7 @@ router.post(
         typingTime = 0,
         footerName,
         checkNumber = false,
+        previewLinks = false,
       } = req.body;
 
       if (!chatId || !message) {
@@ -442,7 +479,9 @@ router.post(
         chatId,
         message,
         typingTime,
-        footerName || null
+        footerName || null,
+        req.body.mentions || [],
+        previewLinks
       );
       return res.json(result);
     } catch (error: any) {
@@ -498,7 +537,11 @@ router.post(
         imageUrl,
         caption || "",
         typingTime,
-        footerName || null
+        footerName || null,
+        req.body.compress !== false, // Default: true
+        req.body.quality || 80,
+        req.body.mentions || [],
+        req.body.viewOnce || false
       );
       return res.json(result);
     } catch (error: any) {
@@ -558,7 +601,9 @@ router.post(
         mimetype,
         caption || "",
         typingTime,
-        footerName || null
+        footerName || null,
+        req.body.mentions || [],
+        req.body.viewOnce || false
       );
       return res.json(result);
     } catch (error: any) {
@@ -914,6 +959,394 @@ router.post(
   }
 );
 
+// Send Broadcast (with anti-ban features)
+router.post(
+  "/chats/broadcast",
+  checkSession,
+  async (req: Request, res: Response) => {
+    try {
+      const {
+        recipients,
+        message,
+        typingTime = 1000,
+        minDelay = 2000,
+        maxDelay = 5000,
+        footerName,
+        checkNumber = false,
+        batchSize = 10,
+        batchDelay = 30000,
+      } = req.body;
+
+      if (
+        !recipients ||
+        !Array.isArray(recipients) ||
+        recipients.length === 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Missing required field: recipients (array of phone numbers)",
+        });
+      }
+
+      if (!message) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required field: message",
+        });
+      }
+
+      // Validate batch size (max 50 per batch to avoid rate limiting)
+      const validatedBatchSize = Math.min(Math.max(1, batchSize || 10), 50);
+
+      // Validate delays
+      const validatedMinDelay = Math.max(1000, minDelay || 2000);
+      const validatedMaxDelay = Math.max(validatedMinDelay, maxDelay || 5000);
+      const validatedBatchDelay = Math.max(10000, batchDelay || 30000);
+
+      const result = await req.session!.sendBroadcast(recipients, message, {
+        typingTime,
+        minDelay: validatedMinDelay,
+        maxDelay: validatedMaxDelay,
+        footerName: footerName || null,
+        checkNumber,
+        batchSize: validatedBatchSize,
+        batchDelay: validatedBatchDelay,
+      });
+
+      return res.json(result);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+      return;
+    }
+  }
+);
+
+// Bulk Send Text (different messages to different recipients)
+router.post(
+  "/chats/bulk-send-text",
+  checkSession,
+  async (req: Request, res: Response) => {
+    try {
+      const {
+        items,
+        typingTime = 1000,
+        minDelay = 2000,
+        maxDelay = 5000,
+        footerName,
+        checkNumber = false,
+        batchSize = 10,
+        batchDelay = 30000,
+      } = req.body;
+
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required field: items (array of {phone, message})",
+        });
+      }
+
+      // Validate items structure
+      for (const item of items) {
+        if (!item.phone || !item.message) {
+          return res.status(400).json({
+            success: false,
+            message: "Each item must have 'phone' and 'message' fields",
+          });
+        }
+      }
+
+      // Validate batch size
+      const validatedBatchSize = Math.min(Math.max(1, batchSize || 10), 50);
+      const validatedMinDelay = Math.max(1000, minDelay || 2000);
+      const validatedMaxDelay = Math.max(validatedMinDelay, maxDelay || 5000);
+      const validatedBatchDelay = Math.max(10000, batchDelay || 30000);
+
+      const result = await req.session!.sendBulkText(items, {
+        typingTime,
+        minDelay: validatedMinDelay,
+        maxDelay: validatedMaxDelay,
+        footerName: footerName || null,
+        checkNumber,
+        batchSize: validatedBatchSize,
+        batchDelay: validatedBatchDelay,
+      });
+
+      return res.json(result);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+      return;
+    }
+  }
+);
+
+// Bulk Send Image (different images to different recipients)
+router.post(
+  "/chats/bulk-send-image",
+  checkSession,
+  async (req: Request, res: Response) => {
+    try {
+      const {
+        items,
+        typingTime = 1000,
+        minDelay = 2000,
+        maxDelay = 5000,
+        footerName,
+        checkNumber = false,
+        batchSize = 10,
+        batchDelay = 30000,
+      } = req.body;
+
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Missing required field: items (array of {phone, imageUrl, caption?})",
+        });
+      }
+
+      // Validate items structure
+      for (const item of items) {
+        if (!item.phone || !item.imageUrl) {
+          return res.status(400).json({
+            success: false,
+            message: "Each item must have 'phone' and 'imageUrl' fields",
+          });
+        }
+      }
+
+      // Validate batch size
+      const validatedBatchSize = Math.min(Math.max(1, batchSize || 10), 50);
+      const validatedMinDelay = Math.max(1000, minDelay || 2000);
+      const validatedMaxDelay = Math.max(validatedMinDelay, maxDelay || 5000);
+      const validatedBatchDelay = Math.max(10000, batchDelay || 30000);
+
+      const result = await req.session!.sendBulkImage(items, {
+        typingTime,
+        minDelay: validatedMinDelay,
+        maxDelay: validatedMaxDelay,
+        footerName: footerName || null,
+        checkNumber,
+        batchSize: validatedBatchSize,
+        batchDelay: validatedBatchDelay,
+      });
+
+      return res.json(result);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+      return;
+    }
+  }
+);
+
+// Bulk Send Document
+router.post(
+  "/chats/bulk-send-document",
+  checkSession,
+  async (req: Request, res: Response) => {
+    try {
+      const {
+        items,
+        typingTime = 1000,
+        minDelay = 2000,
+        maxDelay = 5000,
+        footerName,
+        checkNumber = false,
+        batchSize = 10,
+        batchDelay = 30000,
+      } = req.body;
+
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Missing required field: items (array of {phone, documentUrl, filename, mimetype, caption?})",
+        });
+      }
+
+      for (const item of items) {
+        if (
+          !item.phone ||
+          !item.documentUrl ||
+          !item.filename ||
+          !item.mimetype
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Each item must have 'phone', 'documentUrl', 'filename', and 'mimetype' fields",
+          });
+        }
+      }
+
+      const validatedBatchSize = Math.min(Math.max(1, batchSize || 10), 50);
+      const validatedMinDelay = Math.max(1000, minDelay || 2000);
+      const validatedMaxDelay = Math.max(validatedMinDelay, maxDelay || 5000);
+      const validatedBatchDelay = Math.max(10000, batchDelay || 30000);
+
+      const result = await req.session!.sendBulkDocument(items, {
+        typingTime,
+        minDelay: validatedMinDelay,
+        maxDelay: validatedMaxDelay,
+        footerName: footerName || null,
+        checkNumber,
+        batchSize: validatedBatchSize,
+        batchDelay: validatedBatchDelay,
+      });
+
+      return res.json(result);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+      return;
+    }
+  }
+);
+
+// Send Sticker
+router.post(
+  "/chats/send-sticker",
+  checkSession,
+  async (req: Request, res: Response) => {
+    try {
+      const { chatId, imageUrl, typingTime = 0 } = req.body;
+
+      if (!chatId || !imageUrl) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required fields: chatId, imageUrl",
+        });
+      }
+
+      const result = await req.session!.sendSticker(
+        chatId,
+        imageUrl,
+        typingTime
+      );
+      return res.json(result);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+      return;
+    }
+  }
+);
+
+// Post WhatsApp Status
+router.post(
+  "/status/post",
+  checkSession,
+  async (req: Request, res: Response) => {
+    try {
+      const { mediaUrl, caption = "", type = "image" } = req.body;
+
+      if (!mediaUrl) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required field: mediaUrl",
+        });
+      }
+
+      if (!["image", "video"].includes(type)) {
+        return res.status(400).json({
+          success: false,
+          message: "Type must be 'image' or 'video'",
+        });
+      }
+
+      const result = await req.session!.postStatus(mediaUrl, caption, type);
+      return res.json(result);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+      return;
+    }
+  }
+);
+
+// Update Device Name
+router.post(
+  "/profile/update-device-name",
+  checkSession,
+  async (req: Request, res: Response) => {
+    try {
+      const { deviceName } = req.body;
+
+      if (!deviceName) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required field: deviceName",
+        });
+      }
+
+      const result = await req.session!.updateDeviceName(deviceName);
+      return res.json(result);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+      return;
+    }
+  }
+);
+
+// Update Auto Reply
+router.post(
+  "/profile/update-auto-reply",
+  checkSession,
+  async (req: Request, res: Response) => {
+    try {
+      const { autoReply } = req.body;
+
+      // Allow null to disable auto reply
+      const result = await req.session!.updateAutoReply(autoReply || null);
+      return res.json(result);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+      return;
+    }
+  }
+);
+
+// Update Auto Mark Read
+router.post(
+  "/profile/update-auto-mark-read",
+  checkSession,
+  async (req: Request, res: Response) => {
+    try {
+      const { autoMarkRead = false } = req.body;
+
+      const result = await req.session!.updateAutoMarkRead(autoMarkRead);
+      return res.json(result);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+      return;
+    }
+  }
+);
+
 // Update profile name (pushName)
 router.post(
   "/profile/update-name",
@@ -930,6 +1363,72 @@ router.post(
       }
 
       const result = await req.session!.updateProfileName(name);
+      return res.json(result);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+      return;
+    }
+  }
+);
+
+// Send Broadcast (with anti-ban features)
+router.post(
+  "/chats/broadcast",
+  checkSession,
+  async (req: Request, res: Response) => {
+    try {
+      const {
+        recipients,
+        message,
+        typingTime = 1000,
+        minDelay = 2000,
+        maxDelay = 5000,
+        footerName,
+        checkNumber = false,
+        batchSize = 10,
+        batchDelay = 30000,
+      } = req.body;
+
+      if (
+        !recipients ||
+        !Array.isArray(recipients) ||
+        recipients.length === 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Missing required field: recipients (array of phone numbers)",
+        });
+      }
+
+      if (!message) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required field: message",
+        });
+      }
+
+      // Validate batch size (max 50 per batch to avoid rate limiting)
+      const validatedBatchSize = Math.min(Math.max(1, batchSize || 10), 50);
+
+      // Validate delays
+      const validatedMinDelay = Math.max(1000, minDelay || 2000);
+      const validatedMaxDelay = Math.max(validatedMinDelay, maxDelay || 5000);
+      const validatedBatchDelay = Math.max(10000, batchDelay || 30000);
+
+      const result = await req.session!.sendBroadcast(recipients, message, {
+        typingTime,
+        minDelay: validatedMinDelay,
+        maxDelay: validatedMaxDelay,
+        footerName: footerName || null,
+        checkNumber,
+        batchSize: validatedBatchSize,
+        batchDelay: validatedBatchDelay,
+      });
+
       return res.json(result);
     } catch (error: any) {
       res.status(500).json({

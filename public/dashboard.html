@@ -1076,6 +1076,7 @@
                                     <option value="GET|/api/whatsapp/sessions/{sessionId}/status">GET /sessions/:sessionId/status - Get session status</option>
                                     <option value="GET|/api/whatsapp/sessions/{sessionId}/qr">GET /sessions/:sessionId/qr - Get QR code</option>
                                     <option value="POST|/api/whatsapp/sessions/{sessionId}/connect">POST /sessions/:sessionId/connect - Connect session</option>
+                                    <option value="POST|/api/whatsapp/sessions/{sessionId}/pairing-code">POST /sessions/:sessionId/pairing-code - Request pairing code</option>
                                     <option value="PATCH|/api/whatsapp/sessions/{sessionId}/config">PATCH /sessions/:sessionId/config - Update config</option>
                                     <option value="POST|/api/whatsapp/sessions/{sessionId}/webhooks">POST /sessions/:sessionId/webhooks - Add webhook</option>
                                     <option value="DELETE|/api/whatsapp/sessions/{sessionId}/webhooks">DELETE /sessions/:sessionId/webhooks - Remove webhook</option>
@@ -1090,9 +1091,23 @@
                                     <option value="POST|/api/whatsapp/chats/send-button">POST /chats/send-button - Send button message</option>
                                     <option value="POST|/api/whatsapp/chats/send-otp">POST /chats/send-otp - Send OTP message</option>
                                     <option value="POST|/api/whatsapp/chats/extract-otp">POST /chats/extract-otp - Extract OTP from text</option>
+                                    <option value="POST|/api/whatsapp/chats/broadcast">POST /chats/broadcast - Send broadcast (anti-ban)</option>
+                                    <option value="POST|/api/whatsapp/chats/bulk-send-text">POST /chats/bulk-send-text - Bulk send text (different messages)</option>
+                                    <option value="POST|/api/whatsapp/chats/bulk-send-image">POST /chats/bulk-send-image - Bulk send image (different images)</option>
+                                    <option value="POST|/api/whatsapp/chats/bulk-send-document">POST /chats/bulk-send-document - Bulk send document (different documents)</option>
+                                    <option value="POST|/api/whatsapp/chats/send-sticker">POST /chats/send-sticker - Send sticker (convert image to WebP)</option>
                                     <option value="POST|/api/whatsapp/chats/presence">POST /chats/presence - Send typing indicator</option>
                                     <option value="POST|/api/whatsapp/chats/check-number">POST /chats/check-number - Check number exists</option>
                                     <option value="POST|/api/whatsapp/chats/profile-picture">POST /chats/profile-picture - Get profile picture</option>
+                                </optgroup>
+                                <optgroup label="Status">
+                                    <option value="POST|/api/whatsapp/status/post">POST /status/post - Post WhatsApp status</option>
+                                </optgroup>
+                                <optgroup label="Profile & Settings">
+                                    <option value="POST|/api/whatsapp/profile/update-name">POST /profile/update-name - Update profile name (pushName)</option>
+                                    <option value="POST|/api/whatsapp/profile/update-device-name">POST /profile/update-device-name - Update device name (OS name)</option>
+                                    <option value="POST|/api/whatsapp/profile/update-auto-reply">POST /profile/update-auto-reply - Update auto reply message</option>
+                                    <option value="POST|/api/whatsapp/profile/update-auto-mark-read">POST /profile/update-auto-mark-read - Update auto mark read setting</option>
                                 </optgroup>
                                 <optgroup label="Chat History">
                                     <option value="POST|/api/whatsapp/chats/overview">POST /chats/overview - Get chats overview</option>
@@ -1206,17 +1221,43 @@
             
             <!-- QR Code Container -->
             <div id="qrCodeContainer">
-                <div class="qr-container" id="qrContainer">
-                    <div class="qr-loading">
-                        <div class="spinner"></div>
-                    </div>
+            <div class="qr-container" id="qrContainer">
+                <div class="qr-loading">
+                    <div class="spinner"></div>
                 </div>
+            </div>
                 <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px; margin-top: 16px;">
                     Open WhatsApp on your phone → Menu → Linked Devices → Link a Device → Scan QR Code
-                </p>
+            </p>
             </div>
             
             <button class="btn btn-outline" onclick="closeQrModal()">Close</button>
+        </div>
+    </div>
+
+    <!-- Pairing Code Modal -->
+    <div class="modal-overlay" id="pairingCodeModal">
+        <div class="modal" style="max-width: 450px;">
+            <div class="modal-title">🔢 Pairing Code</div>
+            <div class="modal-subtitle" id="pairingCodeSessionName">Session: -</div>
+            
+            <div style="text-align: center; padding: 30px 20px; background: var(--card-bg); border-radius: 8px; margin: 20px 0; border: 2px solid var(--primary);">
+                <div style="font-size: 48px; font-weight: bold; letter-spacing: 8px; color: var(--primary); font-family: 'Courier New', monospace;" id="pairingCodeDisplay">
+                    --------
+                </div>
+            </div>
+            
+            <div style="text-align: center; color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">
+                Enter this code in WhatsApp to connect without QR code<br>
+                <small style="font-size: 11px; margin-top: 8px; display: block;">Go to WhatsApp → Linked Devices → Link a Device → Enter Code</small>
+            </div>
+            
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button class="btn btn-outline" onclick="copyPairingCode()" id="copyPairingCodeBtn">
+                    📋 Copy Code
+                </button>
+                <button class="btn btn-primary" onclick="closePairingCodeModal()">Close</button>
+            </div>
         </div>
     </div>
 
@@ -1247,6 +1288,20 @@
                 <label class="form-label">Metadata (optional)</label>
                 <textarea class="form-input" id="newSessionMetadata" placeholder='{"appName": "MyApp", "userId": "123"}' style="min-height: 80px; font-family: monospace; font-size: 12px;"></textarea>
                 <small style="color: var(--text-muted); font-size: 12px;">Custom JSON data to associate with this session</small>
+            </div>
+            
+            <div class="form-group" style="text-align: left;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="usePairingCode" onchange="togglePairingCodeInput()" style="width: 18px; height: 18px; cursor: pointer;">
+                    <span class="form-label" style="margin: 0;">Use Pairing Code (instead of QR)</span>
+                </label>
+                <small style="color: var(--text-muted); font-size: 12px; display: block; margin-top: 4px;">Connect without QR code. Phone number must be numbers only with country code.</small>
+            </div>
+            
+            <div class="form-group" style="text-align: left; display: none;" id="pairingCodeGroup">
+                <label class="form-label">Phone Number *</label>
+                <input type="text" class="form-input" id="pairingCodePhone" placeholder="628123456789" pattern="[0-9]+" maxlength="15">
+                <small style="color: var(--text-muted); font-size: 12px;">Numbers only (no +, (), or -). Must include country code. Example: 628123456789</small>
             </div>
             
             <div style="display: flex; gap: 12px; justify-content: center; margin-top: 20px;">
@@ -1675,7 +1730,7 @@
             socket.on('qr', (data) => {
                 addEvent('qr', `QR Code generated for ${data.sessionId}`);
                 if (currentLinkSessionId === data.sessionId) {
-                    showQrCode(data.sessionId, data.qrCode);
+                showQrCode(data.sessionId, data.qrCode);
                 }
             });
 
@@ -1842,6 +1897,11 @@
             // Auto-generate session ID
             const autoSessionId = generateSessionId();
             document.getElementById('newSessionId').value = autoSessionId;
+            document.getElementById('newSessionWebhook').value = '';
+            document.getElementById('newSessionMetadata').value = '';
+            document.getElementById('usePairingCode').checked = false;
+            document.getElementById('pairingCodePhone').value = '';
+            togglePairingCodeInput();
             document.getElementById('createSessionModal').classList.add('active');
             document.getElementById('newSessionId').focus();
         }
@@ -1851,12 +1911,28 @@
             document.getElementById('newSessionId').value = '';
             document.getElementById('newSessionWebhook').value = '';
             document.getElementById('newSessionMetadata').value = '';
+            document.getElementById('usePairingCode').checked = false;
+            document.getElementById('pairingCodePhone').value = '';
+            togglePairingCodeInput();
+        }
+        
+        function togglePairingCodeInput() {
+            const usePairingCode = document.getElementById('usePairingCode').checked;
+            const pairingCodeGroup = document.getElementById('pairingCodeGroup');
+            if (usePairingCode) {
+                pairingCodeGroup.style.display = 'block';
+            } else {
+                pairingCodeGroup.style.display = 'none';
+                document.getElementById('pairingCodePhone').value = '';
+            }
         }
 
         async function createSession() {
             const sessionId = document.getElementById('newSessionId').value.trim();
             const webhookUrl = document.getElementById('newSessionWebhook').value.trim();
             const metadataText = document.getElementById('newSessionMetadata').value.trim();
+            const usePairingCode = document.getElementById('usePairingCode').checked;
+            const phoneNumber = document.getElementById('pairingCodePhone').value.trim();
             
             if (!sessionId) {
                 showToast('error', 'Please enter a session ID');
@@ -1866,6 +1942,18 @@
             if (!/^[a-zA-Z0-9_-]+$/.test(sessionId)) {
                 showToast('error', 'Invalid session ID format');
                 return;
+            }
+
+            // Validate phone number if pairing code is selected
+            if (usePairingCode) {
+                if (!phoneNumber) {
+                    showToast('error', 'Please enter phone number for pairing code');
+                    return;
+                }
+                if (!/^[0-9]+$/.test(phoneNumber) || phoneNumber.length < 10) {
+                    showToast('error', 'Invalid phone number. Must be numbers only with country code (e.g., 628123456789)');
+                    return;
+                }
             }
 
             // Build request body
@@ -1893,6 +1981,7 @@
             }
 
             try {
+                // First, create/connect the session
                 const response = await apiFetch(`${API_BASE}/sessions/${sessionId}/connect`, {
                     method: 'POST',
                     body: JSON.stringify(body)
@@ -1900,9 +1989,6 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    closeCreateSessionModal();
-                    showToast('success', 'Session created! Scan QR code to connect.');
-                    
                     // Subscribe to this session
                     if (socket && socket.connected) {
                         socket.emit('subscribe', sessionId);
@@ -1910,8 +1996,34 @@
                     
                     loadSessions();
                     
-                    // Show QR modal after a short delay
-                    setTimeout(() => showQrForSession(sessionId), 1000);
+                    // If pairing code is selected, request pairing code
+                    if (usePairingCode) {
+                        // Wait a bit for session to be fully initialized
+                        setTimeout(async () => {
+                            try {
+                                const pairingResponse = await apiFetch(`${API_BASE}/sessions/${sessionId}/pairing-code`, {
+                                    method: 'POST',
+                                    body: JSON.stringify({ phoneNumber: phoneNumber })
+                                });
+                                const pairingResult = await pairingResponse.json();
+                                
+                                if (pairingResult.success) {
+                                    closeCreateSessionModal();
+                                    showPairingCode(sessionId, pairingResult.data.pairingCode);
+                                } else {
+                                    showToast('error', pairingResult.message || 'Failed to get pairing code');
+                                }
+                            } catch (error) {
+                                console.error('Pairing code error:', error);
+                                showToast('error', 'Failed to request pairing code. Please try again.');
+                            }
+                        }, 1000);
+                    } else {
+                        // Show QR code modal
+                        closeCreateSessionModal();
+                        showToast('success', 'Session created! Scan QR code to connect.');
+                        setTimeout(() => showQrForSession(sessionId), 1000);
+                    }
                 } else {
                     showToast('error', result.message);
                 }
@@ -1974,6 +2086,39 @@
             if (linkCheckInterval) {
                 clearInterval(linkCheckInterval);
                 linkCheckInterval = null;
+            }
+        }
+
+        function showPairingCode(sessionId, pairingCode) {
+            document.getElementById('pairingCodeSessionName').textContent = `Session: ${sessionId}`;
+            document.getElementById('pairingCodeDisplay').textContent = pairingCode;
+            document.getElementById('pairingCodeModal').classList.add('active');
+            // Reset copy button text
+            const btn = document.getElementById('copyPairingCodeBtn');
+            btn.innerHTML = '📋 Copy Code';
+            btn.style.background = '';
+        }
+
+        function closePairingCodeModal() {
+            document.getElementById('pairingCodeModal').classList.remove('active');
+        }
+
+        function copyPairingCode() {
+            const pairingCode = document.getElementById('pairingCodeDisplay').textContent.trim();
+            if (pairingCode && pairingCode !== '--------') {
+                navigator.clipboard.writeText(pairingCode).then(() => {
+                    const btn = document.getElementById('copyPairingCodeBtn');
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '✅ Copied!';
+                    btn.style.background = 'var(--success)';
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.style.background = '';
+                    }, 2000);
+                    showToast('success', 'Pairing code copied to clipboard');
+                }).catch(() => {
+                    showToast('error', 'Failed to copy pairing code');
+                });
             }
         }
 
@@ -2102,18 +2247,25 @@
             } else if (path.includes('/sessions') && path.includes('/connect')) {
                 showBody = false;
                 helpText = '📱 After connecting, scan the QR code to link your WhatsApp.';
+            } else if (path.includes('/sessions') && path.includes('/pairing-code')) {
+                body = {
+                    phoneNumber: '628123456789'
+                };
+                helpText = '🔢 <strong>Pairing Code:</strong> Request a pairing code to connect WhatsApp Web without QR code.<br>📱 <code>phoneNumber</code>: Phone number with country code (numbers only, no +, (), or -). Example: 628123456789<br>⚠️ <strong>Important:</strong> This is NOT Mobile API. It\'s a method to connect WhatsApp Web without QR code. You can connect only with one device.';
             }
             // Messaging
             else if (path.includes('/chats/send-text')) {
                 body = { 
                     sessionId: '', 
                     chatId: '628123456789', 
-                    message: 'Hello from WhatsBridge API!',
+                    message: 'Hello @628123456789! Check this out: https://example.com',
                     footerName: 'My Company',
                     typingTime: 0,
-                    checkNumber: false
+                    checkNumber: false,
+                    mentions: [],
+                    previewLinks: false
                 };
-                helpText = '📝 <code>chatId</code>: Phone number or group ID. <code>typingTime</code>: Typing duration in ms before sending (0 = no typing). <code>checkNumber</code>: If true, checks if phone number is registered before sending.<br>💡 <strong>Whitelabel Footer:</strong> A footer (format: > _footerName_) will be automatically appended. Priority: <code>footerName</code> in payload > session metadata > environment variable (<code>MESSAGE_FOOTER</code>).';
+                helpText = '📝 <code>chatId</code>: Phone number or group ID. <code>typingTime</code>: Typing duration in ms before sending (0 = no typing). <code>checkNumber</code>: If true, checks if phone number is registered before sending.<br>💡 <strong>Mention:</strong> Use <code>@phoneNumber</code> in message text or provide <code>mentions</code> array. Works in both personal and group chats. Phone numbers are automatically parsed to JID format.<br>💡 <strong>Link Preview:</strong> Set <code>previewLinks: true</code> to enable automatic link preview generation for URLs in message. Requires <code>link-preview-js</code> dependency.<br>💡 <strong>Whitelabel Footer:</strong> A footer (format: > _footerName_) will be automatically appended. Priority: <code>footerName</code> in payload > session metadata > environment variable (<code>MESSAGE_FOOTER</code>).';
             } else if (path.includes('/chats/send-image')) {
                 body = { 
                     sessionId: '', 
@@ -2122,9 +2274,12 @@
                     caption: 'Image caption',
                     footerName: 'My Company',
                     typingTime: 0,
-                    checkNumber: false
+                    checkNumber: false,
+                    compress: true,
+                    quality: 80,
+                    viewOnce: false
                 };
-                helpText = '🖼️ <code>imageUrl</code>: Direct URL to image. <code>typingTime</code>: Typing duration in ms. <code>checkNumber</code>: If true, checks if phone number is registered before sending.<br>💡 <strong>Whitelabel Footer:</strong> A footer (format: > _footerName_) will be automatically appended to the caption. Priority: <code>footerName</code> in payload > session metadata > environment variable (<code>MESSAGE_FOOTER</code>).';
+                helpText = '🖼️ <code>imageUrl</code>: Direct URL to image. <code>typingTime</code>: Typing duration in ms. <code>checkNumber</code>: If true, checks if phone number is registered before sending.<br>💡 <strong>Compression:</strong> <code>compress</code>: Enable/disable image compression (default: true). <code>quality</code>: Image quality 1-100 (default: 80).<br>💡 <strong>View Once:</strong> Set <code>viewOnce: true</code> to send image that can only be viewed once by recipient. Works with image, video, and audio messages.<br>💡 <strong>Mention:</strong> Use <code>@phoneNumber</code> in caption text or provide <code>mentions</code> array. Works in both personal and group chats. Phone numbers are automatically parsed to JID format.<br>💡 <strong>Whitelabel Footer:</strong> A footer (format: > _footerName_) will be automatically appended to the caption. Priority: <code>footerName</code> in payload > session metadata > environment variable (<code>MESSAGE_FOOTER</code>).';
             } else if (path.includes('/chats/send-document')) {
                 body = { 
                     sessionId: '', 
@@ -2132,12 +2287,14 @@
                     documentUrl: 'https://example.com/document.pdf', 
                     filename: 'document.pdf',
                     mimetype: 'application/pdf',
-                    caption: 'Please review this document',
+                    caption: 'Please review this document @628123456789',
                     footerName: 'My Company',
                     typingTime: 0,
-                    checkNumber: false
+                    checkNumber: false,
+                    mentions: [],
+                    viewOnce: false
                 };
-                helpText = '📄 <code>mimetype</code>: MIME type. <code>caption</code>: Optional caption text. <code>typingTime</code>: Typing duration in ms. <code>checkNumber</code>: If true, checks if phone number is registered before sending.<br>💡 <strong>Whitelabel Footer:</strong> A footer (format: > _footerName_) will be automatically appended to the caption. Priority: <code>footerName</code> in payload > session metadata > environment variable (<code>MESSAGE_FOOTER</code>).';
+                helpText = '📄 <code>mimetype</code>: MIME type. <code>caption</code>: Optional caption text. <code>typingTime</code>: Typing duration in ms. <code>checkNumber</code>: If true, checks if phone number is registered before sending.<br>💡 <strong>View Once:</strong> Set <code>viewOnce: true</code> to send document/media that can only be viewed once by recipient. Works with image, video, and audio messages.<br>💡 <strong>Mention:</strong> Use <code>@phoneNumber</code> in caption text or provide <code>mentions</code> array. Works in both personal and group chats. Phone numbers are automatically parsed to JID format.<br>💡 <strong>Whitelabel Footer:</strong> A footer (format: > _footerName_) will be automatically appended to the caption. Priority: <code>footerName</code> in payload > session metadata > environment variable (<code>MESSAGE_FOOTER</code>).';
             } else if (path.includes('/chats/send-location')) {
                 body = { 
                     sessionId: '', 
@@ -2190,6 +2347,102 @@
                     messageText: 'Your verification code is: 123456'
                 };
                 helpText = '🔍 Extract OTP code from message text. Supports various formats:<br>- "Your code is 123456"<br>- "OTP: 123456"<br>- "Copy Code: 123456"<br>- Standalone 4-8 digit numbers';
+            } else if (path.includes('/chats/broadcast')) {
+                body = { 
+                    sessionId: '', 
+                    recipients: ['628123456789', '628987654321'],
+                    message: 'Hello! This is a broadcast message.',
+                    typingTime: 1000,
+                    minDelay: 2000,
+                    maxDelay: 5000,
+                    batchSize: 10,
+                    batchDelay: 30000,
+                    footerName: 'My Company',
+                    checkNumber: false
+                };
+                helpText = '📢 <strong>Broadcast dengan Anti-Ban:</strong><br><code>recipients</code>: Array nomor telepon<br><code>typingTime</code>: Durasi typing sebelum setiap pesan (ms)<br><code>minDelay</code>: Delay minimum antar pesan (ms, default: 2000)<br><code>maxDelay</code>: Delay maksimum antar pesan (ms, default: 5000)<br><code>batchSize</code>: Jumlah pesan per batch (default: 10, max: 50)<br><code>batchDelay</code>: Delay antar batch (ms, default: 30000)<br>💡 <strong>Rekomendasi:</strong> Untuk broadcast besar, gunakan batchSize kecil (10-20) dan batchDelay panjang (30-60 detik) untuk menghindari ban.';
+            } else if (path.includes('/chats/bulk-send-text')) {
+                body = { 
+                    sessionId: '', 
+                    items: [
+                        { phone: '628123456789', message: 'Hello User 1!' },
+                        { phone: '628987654321', message: 'Hello User 2!' }
+                    ],
+                    typingTime: 1000,
+                    minDelay: 2000,
+                    maxDelay: 5000,
+                    batchSize: 10,
+                    batchDelay: 30000,
+                    footerName: 'My Company',
+                    checkNumber: false
+                };
+                helpText = '📦 <strong>Bulk Send Text (Pesan Berbeda):</strong><br><code>items</code>: Array object dengan <code>{phone, message}</code><br>Setiap item bisa memiliki pesan yang berbeda<br>Menggunakan mekanisme anti-ban yang sama seperti broadcast.';
+            } else if (path.includes('/chats/bulk-send-image')) {
+                body = { 
+                    sessionId: '', 
+                    items: [
+                        { phone: '628123456789', imageUrl: 'https://example.com/image1.jpg', caption: 'Image 1' },
+                        { phone: '628987654321', imageUrl: 'https://example.com/image2.jpg', caption: 'Image 2' }
+                    ],
+                    typingTime: 1000,
+                    minDelay: 2000,
+                    maxDelay: 5000,
+                    batchSize: 10,
+                    batchDelay: 30000,
+                    footerName: 'My Company',
+                    checkNumber: false
+                };
+                helpText = '📦 <strong>Bulk Send Image:</strong><br><code>items</code>: Array object dengan <code>{phone, imageUrl, caption?}</code><br>Setiap item bisa memiliki image dan caption yang berbeda.';
+            } else if (path.includes('/chats/bulk-send-document')) {
+                body = { 
+                    sessionId: '', 
+                    items: [
+                        { phone: '628123456789', documentUrl: 'https://example.com/doc1.pdf', filename: 'document1.pdf', mimetype: 'application/pdf', caption: 'Doc 1' },
+                        { phone: '628987654321', documentUrl: 'https://example.com/doc2.pdf', filename: 'document2.pdf', mimetype: 'application/pdf', caption: 'Doc 2' }
+                    ],
+                    typingTime: 1000,
+                    minDelay: 2000,
+                    maxDelay: 5000,
+                    batchSize: 10,
+                    batchDelay: 30000,
+                    footerName: 'My Company',
+                    checkNumber: false
+                };
+                helpText = '📦 <strong>Bulk Send Document:</strong><br><code>items</code>: Array object dengan <code>{phone, documentUrl, filename, mimetype, caption?}</code><br>Setiap item bisa memiliki document yang berbeda.';
+            } else if (path.includes('/chats/send-sticker')) {
+                body = { 
+                    sessionId: '', 
+                    chatId: '628123456789',
+                    imageUrl: 'https://example.com/image.jpg',
+                    typingTime: 1000
+                };
+                helpText = '🎨 <strong>Send Sticker:</strong><br><code>imageUrl</code>: Direct URL to image (supports JPG, JPEG, PNG, WebP, GIF)<br>Automatically converts to WebP sticker format (512x512 pixels)<br>Preserves transparency for PNG images';
+            } else if (path.includes('/status/post')) {
+                body = { 
+                    sessionId: '', 
+                    mediaUrl: 'https://example.com/image.jpg',
+                    caption: 'Check out my status!',
+                    type: 'image'
+                };
+                helpText = '📊 <strong>Post WhatsApp Status:</strong><br><code>mediaUrl</code>: Direct URL to image or video file<br><code>caption</code>: Optional status caption<br><code>type</code>: <code>image</code> or <code>video</code>';
+            } else if (path.includes('/profile/update-device-name')) {
+                body = { 
+                    sessionId: '', 
+                    deviceName: 'My Custom App'
+                };
+                helpText = '📱 <strong>Update Device Name:</strong><br><code>deviceName</code>: Custom device/OS name when connecting<br>💡 <strong>Note:</strong> Reconnect session to apply changes';
+            } else if (path.includes('/profile/update-auto-reply')) {
+                body = { 
+                    sessionId: '', 
+                    autoReply: 'Thank you for your message. We\'ll get back to you soon.'
+                };
+                helpText = '💬 <strong>Update Auto Reply:</strong><br><code>autoReply</code>: Auto reply message (set to <code>null</code> to disable)<br>💡 <strong>Note:</strong> Only works for personal messages (not group messages)';
+            } else if (path.includes('/profile/update-auto-mark-read')) {
+                body = { 
+                    sessionId: '', 
+                    autoMarkRead: true
+                };
+                helpText = '✅ <strong>Update Auto Mark Read:</strong><br><code>autoMarkRead</code>: <code>true</code> to enable, <code>false</code> to disable<br>When enabled, all incoming messages will be automatically marked as read';
             } else if (path.includes('/chats/presence')) {
                 body = { 
                     sessionId: '', 

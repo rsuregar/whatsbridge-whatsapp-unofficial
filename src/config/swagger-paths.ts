@@ -217,6 +217,66 @@
 
 /**
  * @swagger
+ * /api/whatsapp/sessions/{sessionId}/pairing-code:
+ *   post:
+ *     tags: [Sessions]
+ *     summary: Request pairing code
+ *     description: "Request a pairing code to connect WhatsApp Web without QR code. Phone number must be numbers only (no +, (), or -), must include country code. This is NOT Mobile API, it's a method to connect WhatsApp Web without QR code. You can connect only with one device."
+ *     parameters:
+ *       - in: path
+ *         name: sessionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [phoneNumber]
+ *             properties:
+ *               phoneNumber:
+ *                 type: string
+ *                 example: "628123456789"
+ *                 description: Phone number with country code (numbers only, no +, (), or -)
+ *           examples:
+ *             default:
+ *               value:
+ *                 phoneNumber: "628123456789"
+ *     responses:
+ *       200:
+ *         description: Pairing code generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     sessionId:
+ *                       type: string
+ *                     pairingCode:
+ *                       type: string
+ *                       description: 8-digit pairing code
+ *                     phoneNumber:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                       example: "pair_ready"
+ *       400:
+ *         description: Invalid request
+ *       404:
+ *         description: Session not found
+ */
+
+/**
+ * @swagger
  * /api/whatsapp/sessions/{sessionId}/config:
  *   patch:
  *     tags: [Sessions]
@@ -318,7 +378,7 @@
  *   post:
  *     tags: [Messaging]
  *     summary: Send text message
- *     description: "Send a text message to a chat. A whitelabel footer (format: > _footerName_) will be automatically appended if configured. Priority: payload footerName > session metadata > environment variable (MESSAGE_FOOTER)."
+ *     description: "Send a text message to a chat with optional mention support. Mention users in group chats by including @phoneNumber in the message text (e.g., 'Hello @628123456789, @628987654321!'). A whitelabel footer (format: > _footerName_) will be automatically appended if configured. Priority: payload footerName > session metadata > environment variable (MESSAGE_FOOTER)."
  *     requestBody:
  *       required: true
  *       content:
@@ -336,7 +396,8 @@
  *                 description: Phone number or group JID
  *               message:
  *                 type: string
- *                 example: Hello World!
+ *                 example: "Hello @628123456789, @628987654321!"
+ *                 description: Message text. Supports @phoneNumber format for mentions. Works in both personal and group chats. Phone numbers are automatically parsed to JID format (phoneNumber@s.whatsapp.net).
  *               footerName:
  *                 type: string
  *                 description: Optional footer name to override session metadata or env variable
@@ -351,15 +412,27 @@
  *                 example: false
  *                 default: false
  *                 description: If true, checks if phone number is registered before sending
+ *               mentions:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["628123456789", "628987654321"]
+ *                 description: Array of phone numbers to mention. Also supports @phoneNumber in message text. Works in both personal and group chats. Phone numbers are automatically parsed to JID format (phoneNumber@s.whatsapp.net).
+ *               previewLinks:
+ *                 type: boolean
+ *                 example: false
+ *                 default: false
+ *                 description: "Enable link preview generation for URLs in message (requires link-preview-js). When enabled, Baileys will automatically generate preview cards for URLs in the message."
  *           examples:
  *             default:
  *               value:
  *                 sessionId: "mysession"
  *                 chatId: "628123456789"
- *                 message: "Hello World!"
+ *                 message: "Hello @628123456789, @628987654321!"
  *                 footerName: "My Company"
  *                 typingTime: 2000
  *                 checkNumber: false
+ *                 mentions: []
  *     responses:
  *       200:
  *         description: Message sent
@@ -391,6 +464,8 @@
  *                 example: https://example.com/image.jpg
  *               caption:
  *                 type: string
+ *                 description: Optional caption text. Supports @phoneNumber format for mentions. Works in both personal and group chats. Phone numbers are automatically parsed to JID format (phoneNumber@s.whatsapp.net).
+ *                 example: "Check this out @628123456789!"
  *               footerName:
  *                 type: string
  *                 description: Optional footer name to override session metadata or env variable
@@ -401,16 +476,38 @@
  *                 type: boolean
  *                 example: false
  *                 description: If true, checks if phone number is registered before sending
+ *               compress:
+ *                 type: boolean
+ *                 example: true
+ *                 description: "Compress image before sending (default: true)"
+ *               quality:
+ *                 type: integer
+ *                 example: 80
+ *                 description: "Image quality 1-100 (default: 80)"
+ *               mentions:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["628123456789", "628987654321"]
+ *                 description: Array of phone numbers to mention. Also supports @phoneNumber in caption text (e.g., "Hello @628123456789!"). Works in both personal and group chats. Phone numbers are automatically parsed to JID format (phoneNumber@s.whatsapp.net).
+ *               viewOnce:
+ *                 type: boolean
+ *                 example: false
+ *                 default: false
+ *                 description: "Enable view once message. When enabled, the image can only be viewed once by the recipient. Works with image, video, and audio messages."
  *           examples:
  *             default:
  *               value:
  *                 sessionId: "mysession"
  *                 chatId: "628123456789"
  *                 imageUrl: "https://example.com/image.jpg"
- *                 caption: "Image caption"
+ *                 caption: "Check this out @628123456789!"
  *                 footerName: "My Company"
  *                 typingTime: 0
  *                 checkNumber: false
+ *                 compress: true
+ *                 quality: 80
+ *                 mentions: []
  *     responses:
  *       200:
  *         description: Image sent
@@ -424,7 +521,7 @@
  *   post:
  *     tags: [Messaging]
  *     summary: Send document
- *     description: "Send a document/file. A whitelabel footer (format: > _footerName_) will be automatically appended to the caption if configured. Priority: payload footerName > session metadata > environment variable (MESSAGE_FOOTER)."
+ *     description: "Send a document/file with optional mention support. Mention users in group chats by including @phoneNumber in the caption text (e.g., 'Please review @628123456789!'). A whitelabel footer (format: > _footerName_) will be automatically appended to the caption if configured. Priority: payload footerName > session metadata > environment variable (MESSAGE_FOOTER)."
  *     requestBody:
  *       required: true
  *       content:
@@ -448,8 +545,8 @@
  *                 example: application/pdf
  *               caption:
  *                 type: string
- *                 description: Optional caption text for the document
- *                 example: "Please review this document"
+ *                 description: Optional caption text for the document. Supports @phoneNumber format for mentions. Works in both personal and group chats. Phone numbers are automatically parsed to JID format (phoneNumber@s.whatsapp.net).
+ *                 example: "Please review this document @628123456789!"
  *               footerName:
  *                 type: string
  *                 description: Optional footer name to override session metadata or env variable
@@ -460,6 +557,17 @@
  *                 type: boolean
  *                 example: false
  *                 description: If true, checks if phone number is registered before sending
+ *               mentions:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["628123456789", "628987654321"]
+ *                 description: Array of phone numbers to mention. Also supports @phoneNumber in caption text. Works in both personal and group chats. Phone numbers are automatically parsed to JID format (phoneNumber@s.whatsapp.net).
+ *               viewOnce:
+ *                 type: boolean
+ *                 example: false
+ *                 default: false
+ *                 description: "Enable view once message. When enabled, the document/media can only be viewed once by the recipient. Works with image, video, and audio messages."
  *           examples:
  *             default:
  *               value:
@@ -468,10 +576,11 @@
  *                 documentUrl: "https://example.com/document.pdf"
  *                 filename: "document.pdf"
  *                 mimetype: "application/pdf"
- *                 caption: "Please review this document"
+ *                 caption: "Please review this document @628123456789!"
  *                 footerName: "My Company"
  *                 typingTime: 0
  *                 checkNumber: false
+ *                 mentions: []
  *     responses:
  *       200:
  *         description: Document sent
@@ -670,7 +779,7 @@
  *               expiryMinutes:
  *                 type: integer
  *                 example: 5
- *                 description: Expiry time in minutes (default: 5)
+ *                 description: "Expiry time in minutes (default: 5)"
  *               typingTime:
  *                 type: integer
  *                 example: 0
@@ -744,6 +853,300 @@
  *                       nullable: true
  *                     messageText:
  *                       type: string
+ */
+
+/**
+ * @swagger
+ * /api/whatsapp/chats/broadcast:
+ *   post:
+ *     tags: [Messaging]
+ *     summary: Send broadcast messages with anti-ban features
+ *     description: "Send messages to multiple recipients with configurable delays, batch processing, and typing simulation to avoid WhatsApp bans. Includes random delays between messages and batch delays to mimic human behavior."
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [sessionId, recipients, message]
+ *             properties:
+ *               sessionId:
+ *                 type: string
+ *                 example: mysession
+ *               recipients:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["628123456789", "628987654321", "628111222333"]
+ *                 description: Array of phone numbers or chat IDs
+ *               message:
+ *                 type: string
+ *                 example: "Hello! This is a broadcast message."
+ *               typingTime:
+ *                 type: integer
+ *                 example: 1000
+ *                 description: "Typing duration in ms before each message (default: 1000)"
+ *               minDelay:
+ *                 type: integer
+ *                 example: 2000
+ *                 description: "Minimum random delay between messages in ms (default: 2000)"
+ *               maxDelay:
+ *                 type: integer
+ *                 example: 5000
+ *                 description: "Maximum random delay between messages in ms (default: 5000)"
+ *               batchSize:
+ *                 type: integer
+ *                 example: 10
+ *                 description: "Number of messages per batch (default: 10, max: 50)"
+ *               batchDelay:
+ *                 type: integer
+ *                 example: 30000
+ *                 description: "Delay between batches in ms (default: 30000)"
+ *               footerName:
+ *                 type: string
+ *                 example: "My Company"
+ *               checkNumber:
+ *                 type: boolean
+ *                 example: false
+ *           examples:
+ *             default:
+ *               value:
+ *                 sessionId: "mysession"
+ *                 recipients: ["628123456789", "628987654321"]
+ *                 message: "Hello! This is a broadcast message."
+ *                 typingTime: 1000
+ *                 minDelay: 2000
+ *                 maxDelay: 5000
+ *                 batchSize: 10
+ *                 batchDelay: 30000
+ *                 footerName: "My Company"
+ *                 checkNumber: false
+ *     responses:
+ *       200:
+ *         description: Broadcast completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                     success:
+ *                       type: integer
+ *                     failed:
+ *                       type: integer
+ *                     results:
+ *                       type: array
+ *                     errors:
+ *                       type: array
+ */
+
+/**
+ * @swagger
+ * /api/whatsapp/chats/bulk-send-text:
+ *   post:
+ *     tags: [Messaging]
+ *     summary: Bulk send text messages (different messages to different recipients)
+ *     description: "Send different text messages to different recipients with anti-ban features. Each item in the array can have a different message."
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [sessionId, items]
+ *             properties:
+ *               sessionId:
+ *                 type: string
+ *                 example: mysession
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required: [phone, message]
+ *                   properties:
+ *                     phone:
+ *                       type: string
+ *                       example: "628123456789"
+ *                     message:
+ *                       type: string
+ *                       example: "Hello! Your personalized message."
+ *                 example:
+ *                   - phone: "628123456789"
+ *                     message: "Hello User 1!"
+ *                   - phone: "628987654321"
+ *                     message: "Hello User 2!"
+ *               typingTime:
+ *                 type: integer
+ *                 example: 1000
+ *               minDelay:
+ *                 type: integer
+ *                 example: 2000
+ *               maxDelay:
+ *                 type: integer
+ *                 example: 5000
+ *               batchSize:
+ *                 type: integer
+ *                 example: 10
+ *               batchDelay:
+ *                 type: integer
+ *                 example: 30000
+ *               footerName:
+ *                 type: string
+ *                 example: "My Company"
+ *               checkNumber:
+ *                 type: boolean
+ *                 example: false
+ *           examples:
+ *             default:
+ *               value:
+ *                 sessionId: "mysession"
+ *                 items:
+ *                   - phone: "628123456789"
+ *                     message: "Hello User 1!"
+ *                   - phone: "628987654321"
+ *                     message: "Hello User 2!"
+ *                 typingTime: 1000
+ *                 minDelay: 2000
+ *                 maxDelay: 5000
+ *                 batchSize: 10
+ *                 batchDelay: 30000
+ *                 footerName: "My Company"
+ *                 checkNumber: false
+ *     responses:
+ *       200:
+ *         description: Bulk send completed
+ */
+
+/**
+ * @swagger
+ * /api/whatsapp/chats/bulk-send-image:
+ *   post:
+ *     tags: [Messaging]
+ *     summary: Bulk send image messages (different images to different recipients)
+ *     description: "Send different images to different recipients with anti-ban features."
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [sessionId, items]
+ *             properties:
+ *               sessionId:
+ *                 type: string
+ *                 example: mysession
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required: [phone, imageUrl]
+ *                   properties:
+ *                     phone:
+ *                       type: string
+ *                       example: "628123456789"
+ *                     imageUrl:
+ *                       type: string
+ *                       example: "https://example.com/image.jpg"
+ *                     caption:
+ *                       type: string
+ *                       example: "Your image"
+ *               typingTime:
+ *                 type: integer
+ *                 example: 1000
+ *               minDelay:
+ *                 type: integer
+ *                 example: 2000
+ *               maxDelay:
+ *                 type: integer
+ *                 example: 5000
+ *               batchSize:
+ *                 type: integer
+ *                 example: 10
+ *               batchDelay:
+ *                 type: integer
+ *                 example: 30000
+ *               footerName:
+ *                 type: string
+ *                 example: "My Company"
+ *               checkNumber:
+ *                 type: boolean
+ *                 example: false
+ *     responses:
+ *       200:
+ *         description: Bulk send completed
+ */
+
+/**
+ * @swagger
+ * /api/whatsapp/chats/bulk-send-document:
+ *   post:
+ *     tags: [Messaging]
+ *     summary: Bulk send document messages (different documents to different recipients)
+ *     description: "Send different documents to different recipients with anti-ban features."
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [sessionId, items]
+ *             properties:
+ *               sessionId:
+ *                 type: string
+ *                 example: mysession
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required: [phone, documentUrl, filename, mimetype]
+ *                   properties:
+ *                     phone:
+ *                       type: string
+ *                       example: "628123456789"
+ *                     documentUrl:
+ *                       type: string
+ *                       example: "https://example.com/document.pdf"
+ *                     filename:
+ *                       type: string
+ *                       example: "document.pdf"
+ *                     mimetype:
+ *                       type: string
+ *                       example: "application/pdf"
+ *                     caption:
+ *                       type: string
+ *                       example: "Your document"
+ *               typingTime:
+ *                 type: integer
+ *                 example: 1000
+ *               minDelay:
+ *                 type: integer
+ *                 example: 2000
+ *               maxDelay:
+ *                 type: integer
+ *                 example: 5000
+ *               batchSize:
+ *                 type: integer
+ *                 example: 10
+ *               batchDelay:
+ *                 type: integer
+ *                 example: 30000
+ *               footerName:
+ *                 type: string
+ *                 example: "My Company"
+ *               checkNumber:
+ *                 type: boolean
+ *                 example: false
+ *     responses:
+ *       200:
+ *         description: Bulk send completed
  */
 
 /**
@@ -1418,25 +1821,25 @@
  *   - name: WebSocket
  *     description: |
  *       ## Real-time WebSocket Events
- *       
+ *
  *       Connect to the WebSocket server for real-time updates.
- *       
+ *
  *       ### Connection
  *       ```javascript
  *       const socket = io('ws://your-server:3000');
  *       ```
- *       
+ *
  *       ### Subscribe to Session Events
  *       ```javascript
  *       // Subscribe to receive events from a specific session
  *       socket.emit('subscribe', 'your-session-id');
- *       
+ *
  *       // Unsubscribe from session events
  *       socket.emit('unsubscribe', 'your-session-id');
  *       ```
- *       
+ *
  *       ### Available Events
- *       
+ *
  *       | Event | Description | Payload |
  *       |-------|-------------|---------|
  *       | `qr` | QR code generated for authentication | `{ sessionId, qr, qrCode }` |
@@ -1454,7 +1857,7 @@
  *       | `group.update` | Group info update | `{ sessionId, groupId, update }` |
  *       | `call` | Incoming call | `{ sessionId, call }` |
  *       | `logged.out` | Session logged out | `{ sessionId, reason }` |
- *       
+ *
  *       ### Example: Listen for Messages
  *       ```javascript
  *       socket.on('message', (data) => {
@@ -1464,7 +1867,7 @@
  *         // data.chatId - Chat/sender ID
  *       });
  *       ```
- *       
+ *
  *       ### Example: Listen for Connection Updates
  *       ```javascript
  *       socket.on('connection.update', (data) => {
@@ -1472,7 +1875,7 @@
  *         // data.status: 'connecting', 'connected', 'disconnected'
  *       });
  *       ```
- *       
+ *
  *       ### Example: Listen for QR Code
  *       ```javascript
  *       socket.on('qr', (data) => {
@@ -1501,7 +1904,7 @@
  *         data:
  *           type: object
  *           description: Event-specific data
- *     
+ *
  *     QREvent:
  *       type: object
  *       description: QR code event payload
@@ -1515,7 +1918,7 @@
  *         qrCode:
  *           type: string
  *           description: Base64 encoded QR code image (data:image/png;base64,...)
- *     
+ *
  *     ConnectionUpdateEvent:
  *       type: object
  *       description: Connection status update event
@@ -1536,7 +1939,7 @@
  *         name:
  *           type: string
  *           example: John Doe
- *     
+ *
  *     MessageEvent:
  *       type: object
  *       description: Incoming message event
@@ -1568,7 +1971,7 @@
  *             pushName:
  *               type: string
  *               description: Sender display name
- *     
+ *
  *     MessageUpdateEvent:
  *       type: object
  *       description: Message status update event
@@ -1582,7 +1985,7 @@
  *           enum: [pending, sent, delivered, read, played]
  *         chatId:
  *           type: string
- *     
+ *
  *     PresenceUpdateEvent:
  *       type: object
  *       description: Presence/typing indicator event
@@ -1597,7 +2000,7 @@
  *         lastSeen:
  *           type: integer
  *           description: Last seen timestamp (if available)
- *     
+ *
  *     GroupParticipantsEvent:
  *       type: object
  *       description: Group participants update event
@@ -1618,7 +2021,7 @@
  *         actor:
  *           type: string
  *           description: Who performed the action
- *     
+ *
  *     CallEvent:
  *       type: object
  *       description: Incoming call event

@@ -4,7 +4,9 @@ import makeWASocket, {
   fetchLatestBaileysVersion,
   downloadMediaMessage,
   getContentType,
+  // WASocket,
 } from "@whiskeysockets/baileys";
+import { getLinkPreview } from "link-preview-js";
 import pino from "pino";
 import path from "path";
 import fs from "fs";
@@ -13,6 +15,7 @@ import qrcode from "qrcode";
 import BaileysStore from "./BaileysStore";
 import MessageFormatter from "./MessageFormatter";
 import wsManager from "../websocket/WebSocketManager";
+import ImageProcessor from "../../utils/ImageProcessor";
 
 /**
  * WhatsApp Session Class
@@ -41,6 +44,9 @@ class WhatsAppSession {
   private authState: any;
   private metadata: Record<string, any>;
   private webhooks: Array<{ url: string; events?: string[] }>;
+  private autoReply: string | null = null;
+  private autoMarkRead: boolean = false;
+  private deviceName: string | null = null;
 
   constructor(sessionId: string, options: any = {}) {
     this.sessionId = sessionId;
@@ -60,6 +66,13 @@ class WhatsAppSession {
     // Custom metadata and webhook
     this.metadata = options.metadata || {};
     this.webhooks = options.webhooks || []; // Array of { url, events? }
+    this.autoReply = options.autoReply || process.env.AUTO_REPLY || null;
+    this.autoMarkRead =
+      options.autoMarkRead !== undefined
+        ? options.autoMarkRead
+        : process.env.AUTO_MARK_READ === "true";
+    this.deviceName =
+      options.deviceName || process.env.DEVICE_NAME || "WhatsBridge API";
 
     // Load config if exists
     this._loadConfig();
@@ -74,6 +87,10 @@ class WhatsAppSession {
         const config = JSON.parse(fs.readFileSync(this.configFile, "utf8"));
         this.metadata = config.metadata || this.metadata;
         this.webhooks = config.webhooks || this.webhooks;
+        if (config.autoReply !== undefined) this.autoReply = config.autoReply;
+        if (config.autoMarkRead !== undefined)
+          this.autoMarkRead = config.autoMarkRead;
+        if (config.deviceName) this.deviceName = config.deviceName;
       }
     } catch (e: any | Error) {
       console.log(
@@ -97,6 +114,9 @@ class WhatsAppSession {
           {
             metadata: this.metadata,
             webhooks: this.webhooks,
+            autoReply: this.autoReply,
+            autoMarkRead: this.autoMarkRead,
+            deviceName: this.deviceName,
           },
           null,
           2
@@ -305,8 +325,9 @@ class WhatsAppSession {
         version,
         auth: state,
         logger: pino({ level: "silent" }),
-        browser: ["WhatsBridge API", "Chrome", "1.0.0"],
+        browser: [this.deviceName || "WhatsBridge API", "Chrome", "1.0.0"],
         syncFullHistory: true,
+        printQRInTerminal: false, // Required for pairing code
       });
 
       // Store reference to socket's auth state if available
@@ -336,10 +357,84 @@ class WhatsAppSession {
     }
   }
 
+  /**
+   * Request pairing code for connection without QR code
+   * Phone number must be numbers only (no +, (), or -), must include country code
+   * @param phoneNumber - Phone number with country code (e.g., "628123456789")
+   * @returns Pairing code
+   */
+  async requestPairingCode(phoneNumber: string): Promise<any> {
+    try {
+      // Clean phone number (remove non-digits)
+      const cleanPhone = phoneNumber.replace(/\D/g, "");
+
+      if (!cleanPhone || cleanPhone.length < 10) {
+        return {
+          success: false,
+          message:
+            "Invalid phone number. Must be numbers only with country code (e.g., 628123456789)",
+        };
+      }
+
+      // Initialize socket if not exists
+      if (!this.socket) {
+        const { state } = await useMultiFileAuthState(this.authFolder);
+        const { version } = await fetchLatestBaileysVersion();
+
+        this.socket = makeWASocket({
+          version,
+          auth: state,
+          logger: pino({ level: "silent" }),
+          browser: [this.deviceName || "WhatsBridge API", "Chrome", "1.0.0"],
+          syncFullHistory: true,
+          printQRInTerminal: false, // Required for pairing code
+        });
+      }
+
+      // Check if already registered
+      if (this.socket.authState?.creds?.registered) {
+        return {
+          success: false,
+          message:
+            "Session is already registered. Cannot request pairing code.",
+        };
+      }
+
+      // Request pairing code
+      const code = await this.socket.requestPairingCode(cleanPhone);
+
+      this.pairCode = code;
+      this.connectionStatus = "pair_ready";
+
+      // Emit pairing code via WebSocket
+      wsManager.emitPairCode(this.sessionId, code);
+
+      return {
+        success: true,
+        message: "Pairing code generated",
+        data: {
+          sessionId: this.sessionId,
+          pairingCode: code,
+          phoneNumber: cleanPhone,
+          status: "pair_ready",
+        },
+      };
+    } catch (error: any | Error) {
+      console.error(
+        `[${this.sessionId}] Error requesting pairing code:`,
+        error
+      );
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
   _setupEventListeners(saveCreds: () => void): void {
     // Connection update
     this.socket.ev.on("connection.update", async (update: any) => {
-      const { connection, lastDisconnect, qr, isNewLogin } = update;
+      const { connection, lastDisconnect, qr } = update;
 
       // Debug: Log update structure when QR or pair code might be available
       if (connection === "connecting" || connection === "open") {
@@ -519,6 +614,16 @@ class WhatsAppSession {
         // Auto-save media if present
         await this._autoSaveMedia(message);
 
+        // Auto mark as read if enabled
+        if (this.autoMarkRead) {
+          try {
+            await this.socket.readMessages([message.key]);
+            console.log(`✅ [${this.sessionId}] Auto-marked message as read`);
+          } catch (error) {
+            // Silent fail
+          }
+        }
+
         // Emit message to WebSocket
         const formattedMessage = MessageFormatter.formatMessage(message);
         wsManager.emitMessage(this.sessionId, formattedMessage);
@@ -532,6 +637,20 @@ class WhatsAppSession {
             sender: formattedMessage.sender,
             timestamp: formattedMessage.timestamp,
           });
+        }
+
+        // Auto reply if enabled
+        if (this.autoReply && formattedMessage) {
+          try {
+            const chatId = formattedMessage.chatId;
+            // Don't reply to group messages unless it mentions us
+            if (!chatId.includes("@g.us")) {
+              await this.sendTextMessage(chatId, this.autoReply, 1000, null);
+              console.log(`💬 [${this.sessionId}] Auto-replied to ${chatId}`);
+            }
+          } catch (error) {
+            console.log(`⚠️ [${this.sessionId}] Auto-reply failed:`, error);
+          }
         }
 
         // Send webhook
@@ -774,11 +893,207 @@ class WhatsAppSession {
     }
   }
 
+  /**
+   * Helper: Random delay between messages (anti-ban)
+   * @param {number} minDelay - Minimum delay in milliseconds
+   * @param {number} maxDelay - Maximum delay in milliseconds
+   */
+  async _randomDelay(
+    minDelay: number = 1000,
+    maxDelay: number = 3000
+  ): Promise<void> {
+    const delay =
+      Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
+
+  /**
+   * Validate and format mentions array against group participants
+   * @param mentions - Array of phone numbers to mention
+   * @param jid - Group JID
+   * @returns Array of validated JIDs
+   */
+  /**
+   * Validate and format mentions array against group participants
+   * Convert phone numbers to JID format: phoneNumber@s.whatsapp.net
+   * @param mentions - Array of phone numbers to mention
+   * @param jid - Group JID
+   * @returns Array of validated JIDs
+   */
+  private async _validateMentions(
+    mentions: string[],
+    jid: string
+  ): Promise<string[]> {
+    if (mentions.length === 0) return [];
+
+    // For personal chats, format phone numbers to JID
+    if (!jid.includes("@g.us")) {
+      return mentions.map((phone) => this._formatPhoneToJid(phone));
+    }
+
+    // For group chats, validate against group participants
+    try {
+      const groupMetadata = await this.socket.groupMetadata(jid);
+      const participants = groupMetadata.participants || [];
+      const phoneToJidMap = new Map<string, string>();
+      participants.forEach((p: any) => {
+        const phone = p.id.split("@")[0];
+        phoneToJidMap.set(phone, p.id);
+        // Also map without country code for flexibility (e.g., 8123456789 -> 628123456789)
+        const phoneWithoutCountry = phone.replace(/^62/, "");
+        if (phoneWithoutCountry !== phone && phoneWithoutCountry.length >= 9) {
+          phoneToJidMap.set(phoneWithoutCountry, p.id);
+        }
+      });
+
+      const validatedMentions: string[] = [];
+      for (const phone of mentions) {
+        const cleanPhone = phone.replace(/\D/g, "");
+        const participantJid = phoneToJidMap.get(cleanPhone);
+        if (participantJid) {
+          validatedMentions.push(participantJid);
+        } else {
+          // Fallback to formatted JID (phoneNumber@s.whatsapp.net)
+          const formattedJid = this._formatPhoneToJid(phone);
+          validatedMentions.push(formattedJid);
+          console.log(
+            `⚠️ [${this.sessionId}] Phone ${phone} not found in group participants, using formatted JID: ${formattedJid}`
+          );
+        }
+      }
+      return validatedMentions;
+    } catch (error) {
+      // Fallback to simple formatting
+      console.log(
+        `⚠️ [${this.sessionId}] Could not fetch group metadata for validating mentions:`,
+        error
+      );
+      return mentions.map((phone) => this._formatPhoneToJid(phone));
+    }
+  }
+
+  /**
+   * Parse mentions from message text (@phoneNumber)
+   * Parse phone numbers to JID format: phoneNumber@s.whatsapp.net
+   * @param message - Message text with @phoneNumber mentions
+   * @param chatId - Chat ID (for group mentions validation)
+   * @returns Object with message text (unchanged) and mentions array with JIDs
+   */
+  private async _parseMentions(
+    message: string,
+    chatId: string
+  ): Promise<{
+    text: string;
+    mentions: string[];
+  }> {
+    const mentions: string[] = [];
+    // Keep original text unchanged (Baileys requires @phoneNumber in text)
+    const text = message;
+    const jid = this.formatChatId(chatId);
+
+    // Match @phoneNumber pattern (e.g., @628123456789)
+    const mentionRegex = /@(\d{10,15})/g;
+    const matches = Array.from(message.matchAll(mentionRegex));
+
+    if (matches.length === 0) {
+      return { text, mentions: [] };
+    }
+
+    // For group chats, validate against group participants to get correct JID
+    if (jid.includes("@g.us")) {
+      try {
+        const groupMetadata = await this.socket.groupMetadata(jid);
+        const participants = groupMetadata.participants || [];
+
+        // Create a map of phone numbers to JIDs for quick lookup
+        const phoneToJidMap = new Map<string, string>();
+        participants.forEach((p: any) => {
+          const phone = p.id.split("@")[0];
+          phoneToJidMap.set(phone, p.id);
+          // Also map without country code for flexibility (e.g., 8123456789 -> 628123456789)
+          const phoneWithoutCountry = phone.replace(/^62/, "");
+          if (
+            phoneWithoutCountry !== phone &&
+            phoneWithoutCountry.length >= 9
+          ) {
+            phoneToJidMap.set(phoneWithoutCountry, p.id);
+          }
+        });
+
+        for (const match of matches) {
+          const phoneNumber = match[1];
+          // Try to find exact JID from group participants
+          const participantJid = phoneToJidMap.get(phoneNumber);
+
+          if (participantJid) {
+            // Use the exact JID from group participants
+            if (!mentions.includes(participantJid)) {
+              mentions.push(participantJid);
+            }
+          } else {
+            // Fallback: format phone number to JID (phoneNumber@s.whatsapp.net)
+            const formattedJid = this._formatPhoneToJid(phoneNumber);
+            if (!mentions.includes(formattedJid)) {
+              mentions.push(formattedJid);
+            }
+            console.log(
+              `⚠️ [${this.sessionId}] Phone ${phoneNumber} not found in group participants, using formatted JID: ${formattedJid}`
+            );
+          }
+        }
+      } catch (error) {
+        // If group metadata fetch fails, fallback to simple formatting
+        console.log(
+          `⚠️ [${this.sessionId}] Could not fetch group metadata for mentions:`,
+          error
+        );
+        for (const match of matches) {
+          const phoneNumber = match[1];
+          const formattedJid = this._formatPhoneToJid(phoneNumber);
+          if (!mentions.includes(formattedJid)) {
+            mentions.push(formattedJid);
+          }
+        }
+      }
+    } else {
+      // For personal chats, format phone number to JID (phoneNumber@s.whatsapp.net)
+      for (const match of matches) {
+        const phoneNumber = match[1];
+        const formattedJid = this._formatPhoneToJid(phoneNumber);
+        if (!mentions.includes(formattedJid)) {
+          mentions.push(formattedJid);
+        }
+      }
+    }
+
+    return { text, mentions };
+  }
+
+  /**
+   * Format phone number to JID format: phoneNumber@s.whatsapp.net
+   * @param phoneNumber - Phone number (e.g., 628123456789)
+   * @returns JID format (e.g., 628123456789@s.whatsapp.net)
+   */
+  private _formatPhoneToJid(phoneNumber: string): string {
+    // Clean phone number (remove non-digits)
+    let formatted = phoneNumber.replace(/\D/g, "");
+
+    // Handle leading 0 (convert to 62)
+    if (formatted.startsWith("0")) {
+      formatted = "62" + formatted.slice(1);
+    }
+
+    // Return JID format: phoneNumber@s.whatsapp.net
+    return `${formatted}@s.whatsapp.net`;
+  }
+
   async sendTextMessage(
     chatId: string,
     message: string,
     typingTime: number = 0,
-    footerName: string | null = null
+    footerName: string | null = null,
+    mentions: string[] = [],
+    previewLinks: boolean = false
   ): Promise<any> {
     try {
       if (!this.socket || this.connectionStatus !== "connected") {
@@ -790,13 +1105,75 @@ class WhatsAppSession {
       // Simulate typing if typingTime > 0
       await this._simulateTyping(jid, typingTime);
 
+      // Parse mentions from message if @phoneNumber pattern found
+      const parsed = await this._parseMentions(message, chatId);
+
+      // If mentions array is provided, validate and format them
+      // Otherwise use parsed mentions from message text
+      const finalMentions =
+        mentions.length > 0
+          ? await this._validateMentions(mentions, jid)
+          : parsed.mentions;
+
+      const messageText = parsed.text;
+
       // Append footer if configured
       const footer = this._getFooter(footerName);
-      const messageWithFooter = message + footer;
+      const messageWithFooter = messageText + footer;
 
-      const result = await this.socket.sendMessage(jid, {
+      // Build message payload
+      const messagePayload: any = {
         text: messageWithFooter,
-      });
+      };
+
+      // Add mentions if present
+      // Mentions are already in JID format (phoneNumber@s.whatsapp.net) from _parseMentions
+      if (finalMentions.length > 0) {
+        messagePayload.mentions = finalMentions;
+      }
+
+      // Generate link preview if enabled and message contains URL
+      // Baileys automatically generates link previews when link-preview-js is installed
+      // We just need to ensure the message contains a URL and Baileys will handle the rest
+      if (previewLinks) {
+        try {
+          // Extract URLs from message using regex
+          const urlRegex = /(https?:\/\/[^\s]+)/g;
+          const urls = messageWithFooter.match(urlRegex);
+
+          if (urls && urls.length > 0) {
+            // Pre-generate preview to ensure it's available (optional, Baileys will do this automatically)
+            // This helps ensure the preview is ready before sending
+            try {
+              await getLinkPreview(urls[0], {
+                headers: {
+                  "User-Agent":
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                },
+                timeout: 5000,
+              });
+            } catch (previewError) {
+              // Preview generation failed, but Baileys will still try to generate it
+              console.log(
+                `⚠️ [${this.sessionId}] Link preview pre-generation failed, Baileys will attempt automatic generation:`,
+                previewError instanceof Error
+                  ? previewError.message
+                  : "Unknown error"
+              );
+            }
+            // Baileys will automatically include the preview when sending the message
+            // The message text already contains the URL, so preview will be generated
+          }
+        } catch (error) {
+          // If something goes wrong, send message without preview
+          console.log(
+            `⚠️ [${this.sessionId}] Error processing link preview:`,
+            error instanceof Error ? error.message : "Unknown error"
+          );
+        }
+      }
+
+      const result = await this.socket.sendMessage(jid, messagePayload);
 
       return {
         success: true,
@@ -804,6 +1181,8 @@ class WhatsAppSession {
         data: {
           messageId: result.key.id,
           chatId: jid,
+          mentions: finalMentions, // Include all mentions (JID format)
+          isGroup: jid.includes("@g.us"),
           timestamp: new Date().toISOString(),
         },
       };
@@ -820,7 +1199,11 @@ class WhatsAppSession {
     imageUrl: string,
     caption: string = "",
     typingTime: number = 0,
-    footerName: string | null = null
+    footerName: string | null = null,
+    compress: boolean = true,
+    quality: number = 80,
+    mentions: string[] = [],
+    viewOnce: boolean = false
   ): Promise<any> {
     try {
       if (!this.socket || this.connectionStatus !== "connected") {
@@ -832,14 +1215,68 @@ class WhatsAppSession {
       // Simulate typing if typingTime > 0
       await this._simulateTyping(jid, typingTime);
 
+      // Parse mentions from caption if @phoneNumber pattern found
+      const parsed = await this._parseMentions(caption, chatId);
+
+      // If mentions array is provided, validate and format them
+      // Otherwise use parsed mentions from caption text
+      const finalMentions =
+        mentions.length > 0
+          ? await this._validateMentions(mentions, jid)
+          : parsed.mentions;
+
+      const captionText = parsed.text;
+
       // Append footer to caption if configured
       const footer = this._getFooter(footerName);
-      const captionWithFooter = caption + footer;
+      const captionWithFooter = captionText + footer;
 
-      const result = await this.socket.sendMessage(jid, {
-        image: { url: imageUrl },
+      let finalImageUrl = imageUrl;
+
+      // Compress image if enabled
+      if (compress) {
+        try {
+          const compressedBuffer = await ImageProcessor.compressImage(
+            imageUrl,
+            quality
+          );
+          const tempFile = await ImageProcessor.saveToTempFile(
+            compressedBuffer,
+            "jpg"
+          );
+          finalImageUrl = `file://${tempFile}`;
+
+          // Cleanup temp file after sending (with delay)
+          setTimeout(() => {
+            ImageProcessor.cleanupTempFile(tempFile);
+          }, 5000);
+        } catch (error) {
+          console.log(
+            `⚠️ [${this.sessionId}] Image compression failed, using original:`,
+            error
+          );
+          // Continue with original image if compression fails
+        }
+      }
+
+      // Build message payload
+      const messagePayload: any = {
+        image: { url: finalImageUrl },
         caption: captionWithFooter,
-      });
+      };
+
+      // Add viewOnce if enabled
+      if (viewOnce) {
+        messagePayload.viewOnce = true;
+      }
+
+      // Add mentions if present
+      // Mentions are already in JID format (phoneNumber@s.whatsapp.net) from _parseMentions
+      if (finalMentions.length > 0) {
+        messagePayload.mentions = finalMentions;
+      }
+
+      const result = await this.socket.sendMessage(jid, messagePayload);
 
       return {
         success: true,
@@ -847,7 +1284,182 @@ class WhatsAppSession {
         data: {
           messageId: result.key.id,
           chatId: jid,
+          mentions: finalMentions, // Include all mentions (JID format)
+          isGroup: jid.includes("@g.us"),
           timestamp: new Date().toISOString(),
+        },
+      };
+    } catch (error: any | Error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  /**
+   * Send sticker (converts image to WebP 512x512)
+   */
+  async sendSticker(
+    chatId: string,
+    imageUrl: string,
+    typingTime: number = 0
+  ): Promise<any> {
+    try {
+      if (!this.socket || this.connectionStatus !== "connected") {
+        return { success: false, message: "Session not connected" };
+      }
+
+      const jid = this.formatChatId(chatId);
+
+      // Simulate typing if typingTime > 0
+      await this._simulateTyping(jid, typingTime);
+
+      // Convert image to sticker format (WebP 512x512)
+      let stickerBuffer: Buffer;
+      let tempFile: string | null = null;
+
+      try {
+        stickerBuffer = await ImageProcessor.convertToSticker(imageUrl);
+        tempFile = await ImageProcessor.saveToTempFile(stickerBuffer, "webp");
+        const stickerUrl = `file://${tempFile}`;
+
+        const result = await this.socket.sendMessage(jid, {
+          sticker: { url: stickerUrl },
+        });
+
+        // Cleanup temp file after sending
+        setTimeout(() => {
+          if (tempFile) ImageProcessor.cleanupTempFile(tempFile);
+        }, 5000);
+
+        return {
+          success: true,
+          message: "Sticker sent successfully",
+          data: {
+            messageId: result.key.id,
+            chatId: jid,
+            timestamp: new Date().toISOString(),
+          },
+        };
+      } catch (error: any | Error) {
+        if (tempFile) ImageProcessor.cleanupTempFile(tempFile);
+        throw error;
+      }
+    } catch (error: any | Error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  /**
+   * Post WhatsApp Status (Story)
+   */
+  async postStatus(
+    mediaUrl: string,
+    caption: string = "",
+    type: "image" | "video" = "image"
+  ): Promise<any> {
+    try {
+      if (!this.socket || this.connectionStatus !== "connected") {
+        return { success: false, message: "Session not connected" };
+      }
+
+      // Baileys doesn't have direct status API, but we can use sendMessage to status broadcast list
+      // Note: This is a workaround - actual status posting may require different approach
+      const statusJid = "status@broadcast";
+
+      let mediaPayload: any = {};
+      if (type === "image") {
+        mediaPayload = {
+          image: { url: mediaUrl },
+          caption: caption,
+        };
+      } else if (type === "video") {
+        mediaPayload = {
+          video: { url: mediaUrl },
+          caption: caption,
+        };
+      }
+
+      const result = await this.socket.sendMessage(statusJid, mediaPayload);
+
+      return {
+        success: true,
+        message: "Status posted successfully",
+        data: {
+          messageId: result.key.id,
+          timestamp: new Date().toISOString(),
+        },
+      };
+    } catch (error: any | Error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  /**
+   * Update device name (OS name)
+   */
+  async updateDeviceName(deviceName: string): Promise<any> {
+    try {
+      this.deviceName = deviceName;
+      this._saveConfig();
+
+      // Note: Device name is set during connection, so reconnection is needed for changes to take effect
+      return {
+        success: true,
+        message: "Device name updated. Reconnect session to apply changes.",
+        data: {
+          deviceName: this.deviceName,
+        },
+      };
+    } catch (error: any | Error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  /**
+   * Update auto reply message
+   */
+  async updateAutoReply(autoReply: string | null): Promise<any> {
+    try {
+      this.autoReply = autoReply;
+      this._saveConfig();
+      return {
+        success: true,
+        message: "Auto reply updated",
+        data: {
+          autoReply: this.autoReply,
+        },
+      };
+    } catch (error: any | Error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  /**
+   * Update auto mark read setting
+   */
+  async updateAutoMarkRead(autoMarkRead: boolean): Promise<any> {
+    try {
+      this.autoMarkRead = autoMarkRead;
+      this._saveConfig();
+      return {
+        success: true,
+        message: "Auto mark read updated",
+        data: {
+          autoMarkRead: this.autoMarkRead,
         },
       };
     } catch (error: any | Error) {
@@ -865,7 +1477,9 @@ class WhatsAppSession {
     mimetype: string = "application/pdf",
     caption: string = "",
     typingTime: number = 0,
-    footerName: string | null = null
+    footerName: string | null = null,
+    mentions: string[] = [],
+    viewOnce: boolean = false
   ): Promise<any> {
     try {
       if (!this.socket || this.connectionStatus !== "connected") {
@@ -877,16 +1491,42 @@ class WhatsAppSession {
       // Simulate typing if typingTime > 0
       await this._simulateTyping(jid, typingTime);
 
+      // Parse mentions from caption if @phoneNumber pattern found
+      const parsed = await this._parseMentions(caption, chatId);
+
+      // If mentions array is provided, validate and format them
+      // Otherwise use parsed mentions from caption text
+      const finalMentions =
+        mentions.length > 0
+          ? await this._validateMentions(mentions, jid)
+          : parsed.mentions;
+
+      const captionText = parsed.text;
+
       // Append footer to caption if configured
       const footer = this._getFooter(footerName);
-      const captionWithFooter = caption + footer;
+      const captionWithFooter = captionText + footer;
 
-      const result = await this.socket.sendMessage(jid, {
+      // Build message payload
+      const messagePayload: any = {
         document: { url: documentUrl },
         fileName: filename,
         mimetype: mimetype,
         caption: captionWithFooter,
-      });
+      };
+
+      // Add viewOnce if enabled (works with video, audio too)
+      if (viewOnce) {
+        messagePayload.viewOnce = true;
+      }
+
+      // Add mentions if present
+      // Mentions are already in JID format (phoneNumber@s.whatsapp.net) from _parseMentions
+      if (finalMentions.length > 0) {
+        messagePayload.mentions = finalMentions;
+      }
+
+      const result = await this.socket.sendMessage(jid, messagePayload);
 
       return {
         success: true,
@@ -894,6 +1534,8 @@ class WhatsAppSession {
         data: {
           messageId: result.key.id,
           chatId: jid,
+          mentions: finalMentions, // Include all mentions (JID format)
+          isGroup: jid.includes("@g.us"),
           timestamp: new Date().toISOString(),
         },
       };
@@ -1069,7 +1711,7 @@ class WhatsAppSession {
       // Format OTP message - simple text format that makes OTP easy to copy
       // The OTP code is placed on its own line with clear formatting and bold highlighting
       let otpMessage: string;
-      
+
       if (message && message.includes("{code}")) {
         // If custom message has {code} placeholder, replace it with bold OTP code value
         // Extract {code} and replace with bold formatted OTP code
@@ -1122,20 +1764,539 @@ class WhatsAppSession {
           message: error instanceof Error ? error.message : "Unknown error",
         };
       }
+    } catch (error: any | Error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
 
-      // If successful, add OTP-specific data to response
-      if (result.success) {
-        return {
-          ...result,
-          data: {
-            ...result.data,
-            otpCode: otpCode,
-            expiryMinutes: expiryMinutes,
-          },
-        };
+  // ==================== BROADCAST (ANTI-BAN) ====================
+
+  /**
+   * Send broadcast messages with anti-ban features
+   * @param recipients - Array of phone numbers or chat IDs
+   * @param message - Message text to send
+   * @param options - Broadcast options for anti-ban
+   * @returns ApiResponse with progress and results
+   */
+  async sendBroadcast(
+    recipients: string[],
+    message: string,
+    options: {
+      typingTime?: number;
+      minDelay?: number;
+      maxDelay?: number;
+      footerName?: string | null;
+      checkNumber?: boolean;
+      batchSize?: number;
+      batchDelay?: number;
+    } = {}
+  ): Promise<any> {
+    try {
+      if (!this.socket || this.connectionStatus !== "connected") {
+        return { success: false, message: "Session not connected" };
       }
 
-      return result;
+      const {
+        typingTime = 1000,
+        minDelay = 2000,
+        maxDelay = 5000,
+        footerName = null,
+        checkNumber = false,
+        batchSize = 10,
+        batchDelay = 30000, // 30 seconds between batches
+      } = options;
+
+      const results: any[] = [];
+      const errors: any[] = [];
+      let successCount = 0;
+      let failCount = 0;
+
+      // Process in batches to avoid overwhelming WhatsApp
+      for (let i = 0; i < recipients.length; i += batchSize) {
+        const batch = recipients.slice(i, i + batchSize);
+        const batchNumber = Math.floor(i / batchSize) + 1;
+        const totalBatches = Math.ceil(recipients.length / batchSize);
+
+        console.log(
+          `📢 [${this.sessionId}] Processing batch ${batchNumber}/${totalBatches} (${batch.length} recipients)`
+        );
+
+        // Process batch
+        for (const recipient of batch) {
+          try {
+            // Check number registration if requested
+            if (checkNumber) {
+              const checkResult = await this.isRegistered(
+                recipient.replace("@s.whatsapp.net", "").replace("@g.us", "")
+              );
+              if (!checkResult.success || !checkResult.data?.isRegistered) {
+                errors.push({
+                  recipient,
+                  error: "Number not registered",
+                });
+                failCount++;
+                continue;
+              }
+            }
+
+            // Send message with typing simulation
+            const result = await this.sendTextMessage(
+              recipient,
+              message,
+              typingTime,
+              footerName
+            );
+
+            if (result.success) {
+              successCount++;
+              results.push({
+                recipient,
+                messageId: result.data?.messageId,
+                timestamp: result.data?.timestamp,
+              });
+            } else {
+              failCount++;
+              errors.push({
+                recipient,
+                error: result.message,
+              });
+            }
+
+            // Random delay between messages (anti-ban)
+            // Don't delay after the very last message
+            const currentIndex = recipients.indexOf(recipient);
+            if (currentIndex < recipients.length - 1) {
+              await this._randomDelay(minDelay, maxDelay);
+            }
+          } catch (error: any | Error) {
+            failCount++;
+            errors.push({
+              recipient,
+              error: error instanceof Error ? error.message : "Unknown error",
+            });
+          }
+        }
+
+        // Delay between batches (longer delay to avoid rate limiting)
+        if (i + batchSize < recipients.length) {
+          console.log(
+            `⏳ [${this.sessionId}] Waiting ${
+              batchDelay / 1000
+            }s before next batch...`
+          );
+          await new Promise((resolve) => setTimeout(resolve, batchDelay));
+        }
+      }
+
+      return {
+        success: true,
+        message: `Broadcast completed: ${successCount} sent, ${failCount} failed`,
+        data: {
+          total: recipients.length,
+          success: successCount,
+          failed: failCount,
+          results: results,
+          errors: errors,
+        },
+      };
+    } catch (error: any | Error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  // ==================== BULK SEND (ANTI-BAN) ====================
+
+  /**
+   * Send bulk text messages with different messages to different recipients
+   * @param items - Array of objects with phone and message
+   * @param options - Bulk send options for anti-ban
+   * @returns ApiResponse with progress and results
+   */
+  async sendBulkText(
+    items: Array<{ phone: string; message: string }>,
+    options: {
+      typingTime?: number;
+      minDelay?: number;
+      maxDelay?: number;
+      footerName?: string | null;
+      checkNumber?: boolean;
+      batchSize?: number;
+      batchDelay?: number;
+    } = {}
+  ): Promise<any> {
+    try {
+      if (!this.socket || this.connectionStatus !== "connected") {
+        return { success: false, message: "Session not connected" };
+      }
+
+      const {
+        typingTime = 1000,
+        minDelay = 2000,
+        maxDelay = 5000,
+        footerName = null,
+        checkNumber = false,
+        batchSize = 10,
+        batchDelay = 30000,
+      } = options;
+
+      const results: any[] = [];
+      const errors: any[] = [];
+      let successCount = 0;
+      let failCount = 0;
+
+      // Process in batches
+      for (let i = 0; i < items.length; i += batchSize) {
+        const batch = items.slice(i, i + batchSize);
+        const batchNumber = Math.floor(i / batchSize) + 1;
+        const totalBatches = Math.ceil(items.length / batchSize);
+
+        console.log(
+          `📦 [${this.sessionId}] Processing bulk batch ${batchNumber}/${totalBatches} (${batch.length} items)`
+        );
+
+        // Process batch
+        for (let j = 0; j < batch.length; j++) {
+          const item = batch[j];
+          try {
+            // Check number registration if requested
+            if (checkNumber) {
+              const checkResult = await this.isRegistered(
+                item.phone.replace("@s.whatsapp.net", "").replace("@g.us", "")
+              );
+              if (!checkResult.success || !checkResult.data?.isRegistered) {
+                errors.push({
+                  phone: item.phone,
+                  error: "Number not registered",
+                });
+                failCount++;
+                continue;
+              }
+            }
+
+            // Send message with typing simulation
+            const result = await this.sendTextMessage(
+              item.phone,
+              item.message,
+              typingTime,
+              footerName
+            );
+
+            if (result.success) {
+              successCount++;
+              results.push({
+                phone: item.phone,
+                messageId: result.data?.messageId,
+                timestamp: result.data?.timestamp,
+              });
+            } else {
+              failCount++;
+              errors.push({
+                phone: item.phone,
+                error: result.message,
+              });
+            }
+
+            // Random delay between messages (anti-ban)
+            const currentIndex = i + j;
+            if (currentIndex < items.length - 1) {
+              await this._randomDelay(minDelay, maxDelay);
+            }
+          } catch (error: any | Error) {
+            failCount++;
+            errors.push({
+              phone: item.phone,
+              error: error instanceof Error ? error.message : "Unknown error",
+            });
+          }
+        }
+
+        // Delay between batches
+        if (i + batchSize < items.length) {
+          console.log(
+            `⏳ [${this.sessionId}] Waiting ${
+              batchDelay / 1000
+            }s before next batch...`
+          );
+          await new Promise((resolve) => setTimeout(resolve, batchDelay));
+        }
+      }
+
+      return {
+        success: true,
+        message: `Bulk send completed: ${successCount} sent, ${failCount} failed`,
+        data: {
+          total: items.length,
+          success: successCount,
+          failed: failCount,
+          results: results,
+          errors: errors,
+        },
+      };
+    } catch (error: any | Error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  /**
+   * Send bulk image messages with different images to different recipients
+   */
+  async sendBulkImage(
+    items: Array<{ phone: string; imageUrl: string; caption?: string }>,
+    options: {
+      typingTime?: number;
+      minDelay?: number;
+      maxDelay?: number;
+      footerName?: string | null;
+      checkNumber?: boolean;
+      batchSize?: number;
+      batchDelay?: number;
+    } = {}
+  ): Promise<any> {
+    try {
+      if (!this.socket || this.connectionStatus !== "connected") {
+        return { success: false, message: "Session not connected" };
+      }
+
+      const {
+        typingTime = 1000,
+        minDelay = 2000,
+        maxDelay = 5000,
+        footerName = null,
+        checkNumber = false,
+        batchSize = 10,
+        batchDelay = 30000,
+      } = options;
+
+      const results: any[] = [];
+      const errors: any[] = [];
+      let successCount = 0;
+      let failCount = 0;
+
+      // Process in batches
+      for (let i = 0; i < items.length; i += batchSize) {
+        const batch = items.slice(i, i + batchSize);
+        const batchNumber = Math.floor(i / batchSize) + 1;
+        const totalBatches = Math.ceil(items.length / batchSize);
+
+        console.log(
+          `📦 [${this.sessionId}] Processing bulk image batch ${batchNumber}/${totalBatches} (${batch.length} items)`
+        );
+
+        // Process batch
+        for (let j = 0; j < batch.length; j++) {
+          const item = batch[j];
+          try {
+            if (checkNumber) {
+              const checkResult = await this.isRegistered(
+                item.phone.replace("@s.whatsapp.net", "").replace("@g.us", "")
+              );
+              if (!checkResult.success || !checkResult.data?.isRegistered) {
+                errors.push({
+                  phone: item.phone,
+                  error: "Number not registered",
+                });
+                failCount++;
+                continue;
+              }
+            }
+
+            const result = await this.sendImage(
+              item.phone,
+              item.imageUrl,
+              item.caption || "",
+              typingTime,
+              footerName
+            );
+
+            if (result.success) {
+              successCount++;
+              results.push({
+                phone: item.phone,
+                messageId: result.data?.messageId,
+                timestamp: result.data?.timestamp,
+              });
+            } else {
+              failCount++;
+              errors.push({
+                phone: item.phone,
+                error: result.message,
+              });
+            }
+
+            const currentIndex = i + j;
+            if (currentIndex < items.length - 1) {
+              await this._randomDelay(minDelay, maxDelay);
+            }
+          } catch (error: any | Error) {
+            failCount++;
+            errors.push({
+              phone: item.phone,
+              error: error instanceof Error ? error.message : "Unknown error",
+            });
+          }
+        }
+
+        if (i + batchSize < items.length) {
+          console.log(
+            `⏳ [${this.sessionId}] Waiting ${
+              batchDelay / 1000
+            }s before next batch...`
+          );
+          await new Promise((resolve) => setTimeout(resolve, batchDelay));
+        }
+      }
+
+      return {
+        success: true,
+        message: `Bulk send completed: ${successCount} sent, ${failCount} failed`,
+        data: {
+          total: items.length,
+          success: successCount,
+          failed: failCount,
+          results: results,
+          errors: errors,
+        },
+      };
+    } catch (error: any | Error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  /**
+   * Send bulk document messages
+   */
+  async sendBulkDocument(
+    items: Array<{
+      phone: string;
+      documentUrl: string;
+      filename: string;
+      mimetype: string;
+      caption?: string;
+    }>,
+    options: {
+      typingTime?: number;
+      minDelay?: number;
+      maxDelay?: number;
+      footerName?: string | null;
+      checkNumber?: boolean;
+      batchSize?: number;
+      batchDelay?: number;
+    } = {}
+  ): Promise<any> {
+    try {
+      if (!this.socket || this.connectionStatus !== "connected") {
+        return { success: false, message: "Session not connected" };
+      }
+
+      const {
+        typingTime = 1000,
+        minDelay = 2000,
+        maxDelay = 5000,
+        footerName = null,
+        checkNumber = false,
+        batchSize = 10,
+        batchDelay = 30000,
+      } = options;
+
+      const results: any[] = [];
+      const errors: any[] = [];
+      let successCount = 0;
+      let failCount = 0;
+
+      for (let i = 0; i < items.length; i += batchSize) {
+        const batch = items.slice(i, i + batchSize);
+        const batchNumber = Math.floor(i / batchSize) + 1;
+        const totalBatches = Math.ceil(items.length / batchSize);
+
+        console.log(
+          `📦 [${this.sessionId}] Processing bulk document batch ${batchNumber}/${totalBatches} (${batch.length} items)`
+        );
+
+        for (let j = 0; j < batch.length; j++) {
+          const item = batch[j];
+          try {
+            if (checkNumber) {
+              const checkResult = await this.isRegistered(
+                item.phone.replace("@s.whatsapp.net", "").replace("@g.us", "")
+              );
+              if (!checkResult.success || !checkResult.data?.isRegistered) {
+                errors.push({
+                  phone: item.phone,
+                  error: "Number not registered",
+                });
+                failCount++;
+                continue;
+              }
+            }
+
+            const result = await this.sendDocument(
+              item.phone,
+              item.documentUrl,
+              item.filename,
+              item.mimetype,
+              item.caption || "",
+              typingTime,
+              footerName
+            );
+
+            if (result.success) {
+              successCount++;
+              results.push({
+                phone: item.phone,
+                messageId: result.data?.messageId,
+                timestamp: result.data?.timestamp,
+              });
+            } else {
+              failCount++;
+              errors.push({ phone: item.phone, error: result.message });
+            }
+
+            const currentIndex = i + j;
+            if (currentIndex < items.length - 1) {
+              await this._randomDelay(minDelay, maxDelay);
+            }
+          } catch (error: any | Error) {
+            failCount++;
+            errors.push({
+              phone: item.phone,
+              error: error instanceof Error ? error.message : "Unknown error",
+            });
+          }
+        }
+
+        if (i + batchSize < items.length) {
+          console.log(
+            `⏳ [${this.sessionId}] Waiting ${
+              batchDelay / 1000
+            }s before next batch...`
+          );
+          await new Promise((resolve) => setTimeout(resolve, batchDelay));
+        }
+      }
+
+      return {
+        success: true,
+        message: `Bulk send completed: ${successCount} sent, ${failCount} failed`,
+        data: {
+          total: items.length,
+          success: successCount,
+          failed: failCount,
+          results: results,
+          errors: errors,
+        },
+      };
     } catch (error: any | Error) {
       return {
         success: false,
@@ -1168,7 +2329,7 @@ class WhatsAppSession {
         console.log(
           `👤 [${this.sessionId}] Profile name updated: ${this.name}`
         );
-        
+
         // Emit updated connection status
         wsManager.emitConnectionStatus(this.sessionId, "connected", {
           phoneNumber: this.phoneNumber,
@@ -1191,7 +2352,7 @@ class WhatsAppSession {
           console.log(
             `👤 [${this.sessionId}] Profile name updated from store: ${this.name}`
           );
-          
+
           // Emit updated connection status
           wsManager.emitConnectionStatus(this.sessionId, "connected", {
             phoneNumber: this.phoneNumber,
