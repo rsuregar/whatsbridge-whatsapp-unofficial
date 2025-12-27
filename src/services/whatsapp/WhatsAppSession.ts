@@ -1232,6 +1232,7 @@ class WhatsAppSession {
       const captionWithFooter = captionText + footer;
 
       let finalImageUrl = imageUrl;
+      let tempFile: string | null = null;
 
       // Compress image if enabled
       if (compress) {
@@ -1240,17 +1241,12 @@ class WhatsAppSession {
             imageUrl,
             quality
           );
-          const tempFile = await ImageProcessor.saveToTempFile(
+          tempFile = await ImageProcessor.saveToTempFile(
             compressedBuffer,
             "jpg"
           );
           // Use absolute path directly (Baileys supports absolute paths for local files)
           finalImageUrl = tempFile;
-
-          // Cleanup temp file after sending (with delay)
-          setTimeout(() => {
-            ImageProcessor.cleanupTempFile(tempFile);
-          }, 5000);
         } catch (error) {
           console.log(
             `⚠️ [${this.sessionId}] Image compression failed, using original:`,
@@ -1277,19 +1273,35 @@ class WhatsAppSession {
         messagePayload.mentions = finalMentions;
       }
 
-      const result = await this.socket.sendMessage(jid, messagePayload);
+      try {
+        const result = await this.socket.sendMessage(jid, messagePayload);
 
-      return {
-        success: true,
-        message: "Image sent successfully",
-        data: {
-          messageId: result.key.id,
-          chatId: jid,
-          mentions: finalMentions, // Include all mentions (JID format)
-          isGroup: jid.includes("@g.us"),
-          timestamp: new Date().toISOString(),
-        },
-      };
+        // Cleanup temp file after successful send (delay to ensure upload completes)
+        // Use longer delay (15 seconds) to ensure Baileys has finished uploading
+        if (tempFile) {
+          setTimeout(() => {
+            ImageProcessor.cleanupTempFile(tempFile!);
+          }, 15000);
+        }
+
+        return {
+          success: true,
+          message: "Image sent successfully",
+          data: {
+            messageId: result.key.id,
+            chatId: jid,
+            mentions: finalMentions, // Include all mentions (JID format)
+            isGroup: jid.includes("@g.us"),
+            timestamp: new Date().toISOString(),
+          },
+        };
+      } catch (sendError: any | Error) {
+        // Cleanup temp file immediately on error
+        if (tempFile) {
+          ImageProcessor.cleanupTempFile(tempFile);
+        }
+        throw sendError;
+      }
     } catch (error: any | Error) {
       return {
         success: false,
@@ -1326,24 +1338,35 @@ class WhatsAppSession {
         // Use absolute path directly (Baileys supports absolute paths for local files)
         const stickerUrl = tempFile;
 
-        const result = await this.socket.sendMessage(jid, {
-          sticker: { url: stickerUrl },
-        });
+        try {
+          const result = await this.socket.sendMessage(jid, {
+            sticker: { url: stickerUrl },
+          });
 
-        // Cleanup temp file after sending
-        setTimeout(() => {
-          if (tempFile) ImageProcessor.cleanupTempFile(tempFile);
-        }, 5000);
+          // Cleanup temp file after successful send (delay to ensure upload completes)
+          // Use longer delay (15 seconds) to ensure Baileys has finished uploading
+          if (tempFile) {
+            setTimeout(() => {
+              ImageProcessor.cleanupTempFile(tempFile!);
+            }, 15000);
+          }
 
-        return {
-          success: true,
-          message: "Sticker sent successfully",
-          data: {
-            messageId: result.key.id,
-            chatId: jid,
-            timestamp: new Date().toISOString(),
-          },
-        };
+          return {
+            success: true,
+            message: "Sticker sent successfully",
+            data: {
+              messageId: result.key.id,
+              chatId: jid,
+              timestamp: new Date().toISOString(),
+            },
+          };
+        } catch (sendError: any | Error) {
+          // Cleanup temp file immediately on error
+          if (tempFile) {
+            ImageProcessor.cleanupTempFile(tempFile);
+          }
+          throw sendError;
+        }
       } catch (error: any | Error) {
         if (tempFile) ImageProcessor.cleanupTempFile(tempFile);
         throw error;
