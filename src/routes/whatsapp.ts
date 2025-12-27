@@ -294,56 +294,7 @@ router.get("/sessions/:sessionId/qr/image", (req: Request, res: Response) => {
   }
 });
 
-// Get Pair Code for session
-router.get("/sessions/:sessionId/pair-code", (req: Request, res: Response) => {
-  try {
-    const { sessionId } = req.params;
-    const sessionInfo = whatsappManager.getSessionQR(sessionId);
-
-    if (!sessionInfo) {
-      return res.status(404).json({
-        success: false,
-        message: "Session not found. Please create session first.",
-      });
-    }
-
-    if (sessionInfo.isConnected) {
-      return res.json({
-        success: true,
-        message: "Already connected to WhatsApp",
-        data: {
-          sessionId: sessionInfo.sessionId,
-          status: "connected",
-          pairCode: null,
-        },
-      });
-    }
-
-    if (!sessionInfo.pairCode) {
-      return res.status(404).json({
-        success: false,
-        message: "Pair Code not available yet. Please wait...",
-        data: { status: sessionInfo.status },
-      });
-    }
-
-    return res.json({
-      success: true,
-      message: "Pair Code ready",
-      data: {
-        sessionId: sessionInfo.sessionId,
-        pairCode: sessionInfo.pairCode,
-        status: sessionInfo.status,
-      },
-    });
-  } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-    return;
-  }
-});
+// Pair Code endpoint removed - not working reliably with Baileys
 
 // Delete/Logout a session
 router.delete("/sessions/:sessionId", async (req: Request, res: Response) => {
@@ -952,6 +903,33 @@ router.post(
       }
 
       const result = await req.session!.isRegistered(phone);
+      return res.json(result);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+      return;
+    }
+  }
+);
+
+// Update profile name (pushName)
+router.post(
+  "/profile/update-name",
+  checkSession,
+  async (req: Request, res: Response) => {
+    try {
+      const { name } = req.body;
+
+      if (!name) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required field: name",
+        });
+      }
+
+      const result = await req.session!.updateProfileName(name);
       return res.json(result);
     } catch (error: any) {
       res.status(500).json({

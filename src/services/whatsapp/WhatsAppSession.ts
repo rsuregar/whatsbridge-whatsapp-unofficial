@@ -442,11 +442,23 @@ class WhatsAppSession {
 
         if (this.socket.user) {
           this.phoneNumber = this.socket.user.id.split(":")[0];
-          this.name = this.socket.user.name || "Unknown";
+          // Use sessionId as default instead of "Unknown"
+          this.name = this.socket.user.name || this.sessionId;
           console.log(
             `👤 [${this.sessionId}] Connected as: ${this.name} (${this.phoneNumber})`
           );
+        } else {
+          // If socket.user is not available yet, use sessionId as default
+          this.name = this.sessionId;
         }
+
+        // Fetch profile name asynchronously (might not be available immediately after connection)
+        this._fetchProfileName().catch((err) => {
+          console.log(
+            `⚠️ [${this.sessionId}] Could not fetch profile name:`,
+            err.message
+          );
+        });
 
         // Emit connection status to WebSocket
         wsManager.emitConnectionStatus(this.sessionId, "connected", {
@@ -1133,6 +1145,112 @@ class WhatsAppSession {
   }
 
   // ==================== CONTACT & PROFILE ====================
+
+  /**
+   * Fetch profile name after connection (might not be available immediately)
+   */
+  async _fetchProfileName(): Promise<void> {
+    try {
+      if (!this.socket || !this.phoneNumber) return;
+
+      // Wait a bit for profile to be available
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      // Try to get updated name from socket.user (might be populated after connection)
+      // Only update if we have a real name (not sessionId or empty)
+      if (
+        this.socket.user?.name &&
+        this.socket.user.name !== "Unknown" &&
+        this.socket.user.name !== this.sessionId &&
+        this.socket.user.name.trim().length > 0
+      ) {
+        this.name = this.socket.user.name;
+        console.log(
+          `👤 [${this.sessionId}] Profile name updated: ${this.name}`
+        );
+        
+        // Emit updated connection status
+        wsManager.emitConnectionStatus(this.sessionId, "connected", {
+          phoneNumber: this.phoneNumber,
+          name: this.name,
+        });
+        return;
+      }
+
+      // Try to get profile name from store
+      if (this.store) {
+        const jid = `${this.phoneNumber}@s.whatsapp.net`;
+        const contactInfo = this.store.getContact(jid);
+        if (
+          contactInfo?.name &&
+          contactInfo.name !== "Unknown" &&
+          contactInfo.name !== this.sessionId &&
+          contactInfo.name.trim().length > 0
+        ) {
+          this.name = contactInfo.name;
+          console.log(
+            `👤 [${this.sessionId}] Profile name updated from store: ${this.name}`
+          );
+          
+          // Emit updated connection status
+          wsManager.emitConnectionStatus(this.sessionId, "connected", {
+            phoneNumber: this.phoneNumber,
+            name: this.name,
+          });
+        }
+      }
+    } catch (error: any | Error) {
+      // Silent fail - profile name might not be available
+      console.log(
+        `⚠️ [${this.sessionId}] Could not fetch profile name:`,
+        error instanceof Error ? error.message : "Unknown error"
+      );
+    }
+  }
+
+  /**
+   * Update profile name (pushName)
+   */
+  async updateProfileName(name: string): Promise<any> {
+    try {
+      if (!this.socket || this.connectionStatus !== "connected") {
+        return { success: false, message: "Session not connected" };
+      }
+
+      if (!name || name.trim().length === 0) {
+        return {
+          success: false,
+          message: "Profile name is required",
+        };
+      }
+
+      // Update profile name using Baileys
+      await this.socket.updateProfileName(name.trim());
+
+      // Update local name
+      this.name = name.trim();
+
+      // Emit updated connection status
+      wsManager.emitConnectionStatus(this.sessionId, "connected", {
+        phoneNumber: this.phoneNumber,
+        name: this.name,
+      });
+
+      return {
+        success: true,
+        message: "Profile name updated successfully",
+        data: {
+          name: this.name,
+          phoneNumber: this.phoneNumber,
+        },
+      };
+    } catch (error: any | Error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
 
   async isRegistered(phone: string): Promise<any> {
     try {

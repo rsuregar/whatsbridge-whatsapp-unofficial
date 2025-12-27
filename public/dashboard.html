@@ -1204,16 +1204,6 @@
             <div class="modal-title">📱 Link Device</div>
             <div class="modal-subtitle" id="qrSessionName">Session: -</div>
             
-            <!-- Tabs for QR Code and Pair Code -->
-            <div style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color);">
-                <button class="btn btn-outline btn-sm" id="qrTabBtn" onclick="switchLinkTab('qr')" style="border-bottom: 2px solid var(--primary-color); border-radius: 0;">
-                    📷 QR Code
-                </button>
-                <button class="btn btn-outline btn-sm" id="pairTabBtn" onclick="switchLinkTab('pair')" style="border-bottom: 2px solid transparent; border-radius: 0;">
-                    🔢 Pair Code
-                </button>
-            </div>
-            
             <!-- QR Code Container -->
             <div id="qrCodeContainer">
                 <div class="qr-container" id="qrContainer">
@@ -1224,25 +1214,6 @@
                 <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px; margin-top: 16px;">
                     Open WhatsApp on your phone → Menu → Linked Devices → Link a Device → Scan QR Code
                 </p>
-            </div>
-            
-            <!-- Pair Code Container -->
-            <div id="pairCodeContainer" style="display: none;">
-                <div style="text-align: center; padding: 20px;">
-                    <div id="pairCodeDisplay" style="font-size: 48px; font-weight: bold; letter-spacing: 8px; color: var(--primary-color); margin: 20px 0; font-family: monospace;">
-                        <div class="qr-loading">
-                            <div class="spinner"></div>
-                        </div>
-                    </div>
-                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
-                        Open WhatsApp on your phone → Menu → Linked Devices → Link a Device → Link with Phone Number Instead → Enter this code
-                    </p>
-                    <div style="background: var(--card-bg); border-radius: 8px; padding: 12px; margin-top: 16px; border-left: 3px solid var(--primary-color);">
-                        <p style="font-size: 12px; color: var(--text-muted); margin: 0; text-align: left;">
-                            <strong>Note:</strong> Pair codes are only available when WhatsApp provides them. If you see "Pair code not available", use the QR code method instead. Pair codes appear when you choose "Link with phone number instead" on your WhatsApp device.
-                        </p>
-                    </div>
-                </div>
             </div>
             
             <button class="btn btn-outline" onclick="closeQrModal()">Close</button>
@@ -1708,12 +1679,7 @@
                 }
             });
 
-            socket.on('pair.code', (data) => {
-                addEvent('pair.code', `Pair Code generated for ${data.sessionId}: ${data.pairCode}`);
-                if (currentLinkSessionId === data.sessionId) {
-                    showPairCode(data.sessionId, data.pairCode);
-                }
-            });
+            // Pair code event listener removed - pair code functionality disabled
 
             socket.on('otp', (data) => {
                 addEvent('otp', `OTP extracted: ${data.otpCode} from ${data.sender}`);
@@ -1957,44 +1923,18 @@
         let currentLinkSessionId = null;
         let linkCheckInterval = null;
 
-        function switchLinkTab(tab) {
-            const qrTabBtn = document.getElementById('qrTabBtn');
-            const pairTabBtn = document.getElementById('pairTabBtn');
-            const qrContainer = document.getElementById('qrCodeContainer');
-            const pairContainer = document.getElementById('pairCodeContainer');
-
-            if (tab === 'qr') {
-                qrTabBtn.style.borderBottom = '2px solid var(--primary-color)';
-                pairTabBtn.style.borderBottom = '2px solid transparent';
-                qrContainer.style.display = 'block';
-                pairContainer.style.display = 'none';
-            } else {
-                pairTabBtn.style.borderBottom = '2px solid var(--primary-color)';
-                qrTabBtn.style.borderBottom = '2px solid transparent';
-                qrContainer.style.display = 'none';
-                pairContainer.style.display = 'block';
-                
-                // Load pair code if session is active
-                if (currentLinkSessionId) {
-                    loadPairCode(currentLinkSessionId);
-                }
-            }
-        }
+        // Tab switching removed - only QR code is available now
 
         async function showQrForSession(sessionId) {
             currentLinkSessionId = sessionId;
             document.getElementById('qrSessionName').textContent = `Session: ${sessionId}`;
             document.getElementById('qrContainer').innerHTML = '<div class="qr-loading"><div class="spinner"></div></div>';
-            document.getElementById('pairCodeDisplay').innerHTML = '<div class="qr-loading"><div class="spinner"></div></div>';
             document.getElementById('qrModal').classList.add('active');
-            
-            // Switch to QR tab by default
-            switchLinkTab('qr');
 
-            // Start checking for QR code and pair code
+            // Start checking for QR code
             await checkLinkCodes(sessionId);
             
-            // Poll for codes every 2 seconds
+            // Poll for QR code every 2 seconds
             if (linkCheckInterval) {
                 clearInterval(linkCheckInterval);
             }
@@ -2009,64 +1949,24 @@
 
         async function checkLinkCodes(sessionId) {
             try {
-                // Check QR code
+                // Check QR code only
                 const qrResponse = await apiFetch(`${API_BASE}/sessions/${sessionId}/qr`);
                 const qrResult = await qrResponse.json();
 
                 if (qrResult.success && qrResult.data?.qrCode) {
                     showQrCode(sessionId, qrResult.data.qrCode);
                 }
-
-                // Check pair code
-                const pairResponse = await apiFetch(`${API_BASE}/sessions/${sessionId}/pair-code`);
-                const pairResult = await pairResponse.json();
-
-                if (pairResult.success && pairResult.data?.pairCode) {
-                    showPairCode(sessionId, pairResult.data.pairCode);
-                }
             } catch (error) {
-                console.error('Error checking link codes:', error);
+                console.error('Error checking QR code:', error);
             }
         }
 
-        async function loadPairCode(sessionId) {
-            try {
-                const response = await apiFetch(`${API_BASE}/sessions/${sessionId}/pair-code`);
-                const result = await response.json();
-
-                if (result.success && result.data?.pairCode) {
-                    showPairCode(sessionId, result.data.pairCode);
-                } else {
-                    const status = result.data?.status || 'unknown';
-                    let message = 'Pair code not available yet. Please wait...';
-                    
-                    // Provide more helpful message based on status
-                    if (status === 'qr_ready') {
-                        message = 'QR code is available. Pair codes are only generated when you choose "Link with phone number instead" on your WhatsApp device.';
-                    } else if (status === 'connecting') {
-                        message = 'Connecting to WhatsApp... Please wait.';
-                    } else if (status === 'connected') {
-                        message = 'Session is already connected.';
-                    }
-                    
-                    document.getElementById('pairCodeDisplay').innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: 20px;">${message}<br><small style="font-size: 11px; margin-top: 10px; display: block;">Note: Pair codes are only available when WhatsApp provides them. If unavailable, use the QR code method instead.</small></div>`;
-                }
-            } catch (error) {
-                document.getElementById('pairCodeDisplay').innerHTML = '<div style="color: var(--text-muted);">Failed to load pair code</div>';
-            }
-        }
 
         function showQrCode(sessionId, qrCode) {
             document.getElementById('qrSessionName').textContent = `Session: ${sessionId}`;
             document.getElementById('qrContainer').innerHTML = `<img src="${qrCode}" alt="QR Code">`;
         }
 
-        function showPairCode(sessionId, pairCode) {
-            document.getElementById('qrSessionName').textContent = `Session: ${sessionId}`;
-            // Format pair code with dashes for readability (e.g., 1234-5678)
-            const formattedCode = pairCode.match(/.{1,4}/g)?.join('-') || pairCode;
-            document.getElementById('pairCodeDisplay').innerHTML = formattedCode;
-        }
 
         function closeQrModal() {
             document.getElementById('qrModal').classList.remove('active');
