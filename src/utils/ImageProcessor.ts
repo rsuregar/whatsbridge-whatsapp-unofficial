@@ -133,19 +133,28 @@ class ImageProcessor {
 
   /**
    * Save buffer to temporary file
+   * Returns absolute path to the temporary file
    */
   static async saveToTempFile(
     buffer: Buffer,
     extension: string = "jpg"
   ): Promise<string> {
-    const tempDir = path.join(process.cwd(), "temp");
+    // Use path.resolve to ensure absolute path
+    const tempDir = path.resolve(process.cwd(), "temp");
+    
+    // Create temp directory if it doesn't exist with proper permissions
     if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
+      fs.mkdirSync(tempDir, { 
+        recursive: true,
+        mode: 0o755 // rwxr-xr-x
+      });
     }
 
     const filename = `temp_${Date.now()}_${Math.random().toString(36).substring(7)}.${extension}`;
-    const filepath = path.join(tempDir, filename);
-    fs.writeFileSync(filepath, buffer);
+    const filepath = path.resolve(tempDir, filename);
+    
+    // Write file with proper permissions (rw-r--r--)
+    fs.writeFileSync(filepath, buffer, { mode: 0o644 });
 
     return filepath;
   }

@@ -1244,7 +1244,8 @@ class WhatsAppSession {
             compressedBuffer,
             "jpg"
           );
-          finalImageUrl = `file://${tempFile}`;
+          // Use absolute path directly (Baileys supports absolute paths for local files)
+          finalImageUrl = tempFile;
 
           // Cleanup temp file after sending (with delay)
           setTimeout(() => {
@@ -1322,7 +1323,8 @@ class WhatsAppSession {
       try {
         stickerBuffer = await ImageProcessor.convertToSticker(imageUrl);
         tempFile = await ImageProcessor.saveToTempFile(stickerBuffer, "webp");
-        const stickerUrl = `file://${tempFile}`;
+        // Use absolute path directly (Baileys supports absolute paths for local files)
+        const stickerUrl = tempFile;
 
         const result = await this.socket.sendMessage(jid, {
           sticker: { url: stickerUrl },
