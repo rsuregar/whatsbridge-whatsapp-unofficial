@@ -51,7 +51,7 @@ const swaggerUiOptions = {
         .swagger-ui .info { margin: 20px 0 }
         .swagger-ui .info .title { color: #25D366 }
     `,
-    customSiteTitle: 'WhatsBridge API - Documentation',
+    customSiteTitle: 'NotifWA API - Documentation',
     customfavIcon: '/media/favicon.ico'
 };
 
@@ -123,7 +123,7 @@ app.use((err, req, res, next) => {
 
 // Start Server
 server.listen(PORT, () => {
-    console.log(`WhatsBridge API running on http://localhost:${PORT}`);
+    console.log(`NotifWA API running on http://localhost:${PORT}`);
     console.log(`WebSocket server running on ws://localhost:${PORT}`);
     console.log(`API Documentation: http://localhost:${PORT}`);
 });

@@ -736,7 +736,7 @@
  *                 sessionId: "mysession"
  *                 chatId: "628123456789"
  *                 text: "Please choose an option:"
- *                 footer: "Powered by WhatsBridge"
+ *                 footer: "Powered by NotifWA"
  *                 footerName: "My Company"
  *                 buttons: ["Option 1", "Option 2", "Option 3"]
  *                 typingTime: 0

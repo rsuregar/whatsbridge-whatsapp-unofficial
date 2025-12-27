@@ -1,4 +1,4 @@
-# 🚀 WhatsBridge - WhatsApp API Gateway
+# 🚀 NotifWA - WhatsApp API Gateway
 
 A powerful WhatsApp API backend built with TypeScript, Express.js, and Baileys library. Supports multi-session management, real-time WebSocket events, group management, and media handling. Powered by Bun for fast performance.
 
@@ -53,8 +53,8 @@ A powerful WhatsApp API backend built with TypeScript, Express.js, and Baileys l
 
 ```bash
 # Clone the repository
-git clone https://github.com/rsuregar/whatsbridge.git
-cd whatsbridge
+git clone https://github.com/rsuregar/notifwa.git
+cd notifwa
 
 # Install dependencies
 bun install
@@ -73,8 +73,8 @@ bun run dev
 
 ```bash
 # Clone the repository
-git clone https://github.com/rsuregar/whatsbridge.git
-cd whatsbridge
+git clone https://github.com/rsuregar/notifwa.git
+cd notifwa
 
 # Create environment file
 cp .env.example .env
@@ -105,9 +105,9 @@ The following data is persisted across container restarts:
 
 | Volume                 | Path                | Description           |
 | ---------------------- | ------------------- | --------------------- |
-| `whatsbridge_sessions` | `/app/sessions`     | WhatsApp session data |
-| `whatsbridge_media`    | `/app/public/media` | Received media files  |
-| `whatsbridge_store`    | `/app/store`        | Message history store |
+| `notifwa_sessions` | `/app/sessions`     | WhatsApp session data |
+| `notifwa_media`    | `/app/public/media` | Received media files  |
+| `notifwa_store`    | `/app/store`        | Message history store |
 
 ## ⚙ Configuration
 
@@ -134,7 +134,7 @@ AUTO_REPLY=Thank you for your message. We'll get back to you soon.
 AUTO_MARK_READ=true
 
 # Device Name (optional - custom device/OS name when connecting)
-DEVICE_NAME=WhatsBridge API
+DEVICE_NAME=NotifWA API
 ```
 
 ## 🔐 API Key Authentication
@@ -667,7 +667,7 @@ POST /chats/send-button
   "sessionId": "mysession",
   "chatId": "628123456789",
   "text": "Please choose an option:",
-  "footer": "Powered by WhatsBridge",
+  "footer": "Powered by NotifWA",
   "buttons": ["Option 1", "Option 2", "Option 3"],
   "typingTime": 2000,
   "checkNumber": true
@@ -2007,7 +2007,7 @@ All configured webhook endpoints will receive POST requests with this format:
 | Header             | Value              |
 | ------------------ | ------------------ |
 | `Content-Type`     | `application/json` |
-| `X-Webhook-Source` | `whatsbridge-api`  |
+| `X-Webhook-Source` | `notifwa-api`  |
 | `X-Session-Id`     | Session ID         |
 | `X-Webhook-Event`  | Event name         |
 
@@ -2047,7 +2047,7 @@ GET /api/websocket/stats
 ## 📁 Project Structure
 
 ```
-whatsbridge/
+notifwa/
 ├── index.ts                 # Application entry point (TypeScript)
 ├── package.json
 ├── tsconfig.json            # TypeScript configuration

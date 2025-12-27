@@ -1,4 +1,4 @@
-# WhatsBridge Development Plan
+# NotifWA Development Plan
 
 ## Completed Features
 

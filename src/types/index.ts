@@ -1,4 +1,4 @@
-// Common type definitions for WhatsBridge
+// Common type definitions for NotifWA
 
 export interface ApiResponse<T = any> {
   success: boolean;

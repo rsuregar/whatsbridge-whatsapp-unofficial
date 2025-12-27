@@ -1,7 +1,7 @@
 {
-  "name": "whatsbridge",
+  "name": "notifwa",
   "version": "1.0.0",
-  "description": "WhatsBridge - WhatsApp Multi-Session API Gateway",
+  "description": "NotifWA - WhatsApp Multi-Session API Gateway",
   "main": "index.ts",
   "scripts": {
     "build": "bun build ./index.ts --outdir ./dist --target node",
@@ -14,21 +14,21 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rsuregar/whatsbridge.git"
+    "url": "git+https://github.com/rsuregar/notifwa.git"
   },
   "keywords": [
     "whatsapp",
     "api",
     "gateway",
     "multi-session",
-    "whatsbridge"
+    "notifwa"
   ],
   "author": "Fajri Rinaldi Chan",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/rsuregar/whatsbridge/issues"
+    "url": "https://github.com/rsuregar/notifwa/issues"
   },
-  "homepage": "https://github.com/rsuregar/whatsbridge#readme",
+  "homepage": "https://github.com/rsuregar/notifwa#readme",
   "dependencies": {
     "@types/sharp": "^0.32.0",
     "@whiskeysockets/baileys": "^7.0.0-rc.9",

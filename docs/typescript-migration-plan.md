@@ -1,7 +1,7 @@
 # TypeScript Migration Plan
 
 ## Overview
-Complete refactoring of WhatsBridge from JavaScript to TypeScript for better type safety, IDE support, and maintainability.
+Complete refactoring of NotifWA from JavaScript to TypeScript for better type safety, IDE support, and maintainability.
 
 ## Status
 

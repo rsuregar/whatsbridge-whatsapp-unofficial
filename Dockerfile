@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Add labels
 LABEL maintainer="Farin Azis Chan <farinazischan@gmail.com>"
-LABEL description="WhatsBridge API - Multi-session WhatsApp API Gateway with Baileys"
+LABEL description="NotifWA API - Multi-session WhatsApp API Gateway with Baileys"
 LABEL version="1.0.0"
 
 # Install dependencies
@@ -25,8 +25,8 @@ RUN bun run build:ts || echo "Build skipped - Bun can run TypeScript directly"
 FROM base AS runner
 
 # Create non-root user for security
-RUN addgroup -g 1001 -S whatsbridge && \
-    adduser -S -D -H -u 1001 -G whatsbridge whatsbridge
+RUN addgroup -g 1001 -S notifwa && \
+    adduser -S -D -H -u 1001 -G notifwa notifwa
 
 WORKDIR /app
 
@@ -46,10 +46,10 @@ COPY public ./public
 
 # Create directories for sessions and media with proper permissions
 RUN mkdir -p /app/sessions /app/public/media /app/store && \
-    chown -R whatsbridge:whatsbridge /app
+    chown -R notifwa:notifwa /app
 
 # Switch to non-root user
-USER whatsbridge
+USER notifwa
 
 # Expose port
 EXPOSE 3000

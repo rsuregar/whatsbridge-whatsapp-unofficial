@@ -4,7 +4,7 @@ const options: swaggerJsdoc.Options = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "WhatsBridge API",
+      title: "NotifWA API",
       version: "1.0.0",
       description: `
 A powerful WhatsApp API backend built with Express.js and Baileys library.

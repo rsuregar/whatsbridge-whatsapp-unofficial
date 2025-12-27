@@ -72,7 +72,7 @@ class WhatsAppSession {
         ? options.autoMarkRead
         : process.env.AUTO_MARK_READ === "true";
     this.deviceName =
-      options.deviceName || process.env.DEVICE_NAME || "WhatsBridge API";
+      options.deviceName || process.env.DEVICE_NAME || "NotifWA API";
 
     // Load config if exists
     this._loadConfig();
@@ -243,7 +243,7 @@ class WhatsAppSession {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-Webhook-Source": "whatsbridge-api",
+            "X-Webhook-Source": "notifwa-api",
             "X-Session-Id": this.sessionId,
             "X-Webhook-Event": event,
           },
@@ -325,7 +325,7 @@ class WhatsAppSession {
         version,
         auth: state,
         logger: pino({ level: "silent" }),
-        browser: [this.deviceName || "WhatsBridge API", "Chrome", "1.0.0"],
+        browser: [this.deviceName || "NotifWA API", "Chrome", "1.0.0"],
         syncFullHistory: true,
         printQRInTerminal: false, // Required for pairing code
       });
@@ -385,7 +385,7 @@ class WhatsAppSession {
           version,
           auth: state,
           logger: pino({ level: "silent" }),
-          browser: [this.deviceName || "WhatsBridge API", "Chrome", "1.0.0"],
+          browser: [this.deviceName || "NotifWA API", "Chrome", "1.0.0"],
           syncFullHistory: true,
           printQRInTerminal: false, // Required for pairing code
         });
