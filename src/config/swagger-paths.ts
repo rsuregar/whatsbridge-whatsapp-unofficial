@@ -345,9 +345,26 @@
  *                 type: integer
  *                 example: 2000
  *                 description: Typing indicator duration (ms)
+ *                 default: 0
+ *               checkNumber:
+ *                 type: boolean
+ *                 example: false
+ *                 default: false
+ *                 description: If true, checks if phone number is registered before sending
+ *           examples:
+ *             default:
+ *               value:
+ *                 sessionId: "mysession"
+ *                 chatId: "628123456789"
+ *                 message: "Hello World!"
+ *                 footerName: "My Company"
+ *                 typingTime: 2000
+ *                 checkNumber: false
  *     responses:
  *       200:
  *         description: Message sent
+ *       400:
+ *         description: Phone number not registered (when checkNumber is true)
  */
 
 /**
@@ -380,9 +397,25 @@
  *                 example: "My Company"
  *               typingTime:
  *                 type: integer
+ *               checkNumber:
+ *                 type: boolean
+ *                 example: false
+ *                 description: If true, checks if phone number is registered before sending
+ *           examples:
+ *             default:
+ *               value:
+ *                 sessionId: "mysession"
+ *                 chatId: "628123456789"
+ *                 imageUrl: "https://example.com/image.jpg"
+ *                 caption: "Image caption"
+ *                 footerName: "My Company"
+ *                 typingTime: 0
+ *                 checkNumber: false
  *     responses:
  *       200:
  *         description: Image sent
+ *       400:
+ *         description: Phone number not registered (when checkNumber is true)
  */
 
 /**
@@ -423,9 +456,27 @@
  *                 example: "My Company"
  *               typingTime:
  *                 type: integer
+ *               checkNumber:
+ *                 type: boolean
+ *                 example: false
+ *                 description: If true, checks if phone number is registered before sending
+ *           examples:
+ *             default:
+ *               value:
+ *                 sessionId: "mysession"
+ *                 chatId: "628123456789"
+ *                 documentUrl: "https://example.com/document.pdf"
+ *                 filename: "document.pdf"
+ *                 mimetype: "application/pdf"
+ *                 caption: "Please review this document"
+ *                 footerName: "My Company"
+ *                 typingTime: 0
+ *                 checkNumber: false
  *     responses:
  *       200:
  *         description: Document sent
+ *       400:
+ *         description: Phone number not registered (when checkNumber is true)
  */
 
 /**
@@ -462,9 +513,26 @@
  *                 example: "My Company"
  *               typingTime:
  *                 type: integer
+ *               checkNumber:
+ *                 type: boolean
+ *                 example: false
+ *                 description: If true, checks if phone number is registered before sending
+ *           examples:
+ *             default:
+ *               value:
+ *                 sessionId: "mysession"
+ *                 chatId: "628123456789"
+ *                 latitude: -6.2088
+ *                 longitude: 106.8456
+ *                 name: "Jakarta, Indonesia"
+ *                 footerName: "My Company"
+ *                 typingTime: 0
+ *                 checkNumber: false
  *     responses:
  *       200:
  *         description: Location sent
+ *       400:
+ *         description: Phone number not registered (when checkNumber is true)
  */
 
 /**
@@ -494,9 +562,24 @@
  *                 example: "628987654321"
  *               typingTime:
  *                 type: integer
+ *               checkNumber:
+ *                 type: boolean
+ *                 example: false
+ *                 description: If true, checks if phone number is registered before sending
+ *           examples:
+ *             default:
+ *               value:
+ *                 sessionId: "mysession"
+ *                 chatId: "628123456789"
+ *                 contactName: "John Doe"
+ *                 contactPhone: "628987654321"
+ *                 typingTime: 0
+ *                 checkNumber: false
  *     responses:
  *       200:
  *         description: Contact sent
+ *       400:
+ *         description: Phone number not registered (when checkNumber is true)
  */
 
 /**
@@ -530,17 +613,137 @@
  *               buttons:
  *                 type: array
  *                 items:
- *                   type: object
- *                   properties:
- *                     buttonId:
- *                       type: string
- *                     buttonText:
- *                       type: string
+ *                   type: string
+ *                 example: ["Option 1", "Option 2", "Option 3"]
  *               typingTime:
  *                 type: integer
+ *               checkNumber:
+ *                 type: boolean
+ *                 example: false
+ *                 description: If true, checks if phone number is registered before sending
+ *           examples:
+ *             default:
+ *               value:
+ *                 sessionId: "mysession"
+ *                 chatId: "628123456789"
+ *                 text: "Please choose an option:"
+ *                 footer: "Powered by WhatsBridge"
+ *                 footerName: "My Company"
+ *                 buttons: ["Option 1", "Option 2", "Option 3"]
+ *                 typingTime: 0
+ *                 checkNumber: false
  *     responses:
  *       200:
  *         description: Button message sent
+ *       400:
+ *         description: Phone number not registered (when checkNumber is true)
+ */
+
+/**
+ * @swagger
+ * /api/whatsapp/chats/send-otp:
+ *   post:
+ *     tags: [Messaging]
+ *     summary: Send OTP message
+ *     description: "Send a One-Time Password (OTP) message. The OTP code is formatted in a simple text format that makes it easy to select and copy directly from WhatsApp. The default format is 'Paste kode OTP' followed by the OTP code on a separate line."
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [sessionId, chatId, otpCode]
+ *             properties:
+ *               sessionId:
+ *                 type: string
+ *                 example: mysession
+ *               chatId:
+ *                 type: string
+ *                 example: "628123456789"
+ *               otpCode:
+ *                 type: string
+ *                 example: "123456"
+ *                 description: OTP code (4-8 digits)
+ *               message:
+ *                 type: string
+ *                 description: Optional custom message (default format will be used if empty)
+ *               expiryMinutes:
+ *                 type: integer
+ *                 example: 5
+ *                 description: Expiry time in minutes (default: 5)
+ *               typingTime:
+ *                 type: integer
+ *                 example: 0
+ *               footerName:
+ *                 type: string
+ *                 example: "My Company"
+ *               checkNumber:
+ *                 type: boolean
+ *                 example: false
+ *           examples:
+ *             default:
+ *               value:
+ *                 sessionId: "mysession"
+ *                 chatId: "628123456789"
+ *                 otpCode: "123456"
+ *                 message: ""
+ *                 expiryMinutes: 5
+ *                 typingTime: 0
+ *                 footerName: "My Company"
+ *                 checkNumber: false
+ *     responses:
+ *       200:
+ *         description: OTP sent successfully
+ *       400:
+ *         description: Invalid OTP format or phone number not registered
+ */
+
+/**
+ * @swagger
+ * /api/whatsapp/chats/extract-otp:
+ *   post:
+ *     tags: [Messaging]
+ *     summary: Extract OTP from message text
+ *     description: "Extract OTP code from message text. Supports various formats including 'Your code is 123456', 'OTP: 123456', 'Copy Code: 123456', and standalone 4-8 digit numbers."
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [sessionId, messageText]
+ *             properties:
+ *               sessionId:
+ *                 type: string
+ *                 example: mysession
+ *               messageText:
+ *                 type: string
+ *                 example: "Your verification code is: 123456"
+ *           examples:
+ *             default:
+ *               value:
+ *                 sessionId: "mysession"
+ *                 messageText: "Your verification code is: 123456"
+ *     responses:
+ *       200:
+ *         description: OTP extracted successfully (or not found)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     otpCode:
+ *                       type: string
+ *                       nullable: true
+ *                     messageText:
+ *                       type: string
  */
 
 /**

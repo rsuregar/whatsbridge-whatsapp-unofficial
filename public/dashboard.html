@@ -1088,6 +1088,8 @@
                                     <option value="POST|/api/whatsapp/chats/send-location">POST /chats/send-location - Send location</option>
                                     <option value="POST|/api/whatsapp/chats/send-contact">POST /chats/send-contact - Send contact</option>
                                     <option value="POST|/api/whatsapp/chats/send-button">POST /chats/send-button - Send button message</option>
+                                    <option value="POST|/api/whatsapp/chats/send-otp">POST /chats/send-otp - Send OTP message</option>
+                                    <option value="POST|/api/whatsapp/chats/extract-otp">POST /chats/extract-otp - Extract OTP from text</option>
                                     <option value="POST|/api/whatsapp/chats/presence">POST /chats/presence - Send typing indicator</option>
                                     <option value="POST|/api/whatsapp/chats/check-number">POST /chats/check-number - Check number exists</option>
                                     <option value="POST|/api/whatsapp/chats/profile-picture">POST /chats/profile-picture - Get profile picture</option>
@@ -1199,16 +1201,50 @@
     <!-- QR Modal -->
     <div class="modal-overlay" id="qrModal">
         <div class="modal">
-            <div class="modal-title">📱 Scan QR Code</div>
+            <div class="modal-title">📱 Link Device</div>
             <div class="modal-subtitle" id="qrSessionName">Session: -</div>
-            <div class="qr-container" id="qrContainer">
-                <div class="qr-loading">
-                    <div class="spinner"></div>
+            
+            <!-- Tabs for QR Code and Pair Code -->
+            <div style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color);">
+                <button class="btn btn-outline btn-sm" id="qrTabBtn" onclick="switchLinkTab('qr')" style="border-bottom: 2px solid var(--primary-color); border-radius: 0;">
+                    📷 QR Code
+                </button>
+                <button class="btn btn-outline btn-sm" id="pairTabBtn" onclick="switchLinkTab('pair')" style="border-bottom: 2px solid transparent; border-radius: 0;">
+                    🔢 Pair Code
+                </button>
+            </div>
+            
+            <!-- QR Code Container -->
+            <div id="qrCodeContainer">
+                <div class="qr-container" id="qrContainer">
+                    <div class="qr-loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px; margin-top: 16px;">
+                    Open WhatsApp on your phone → Menu → Linked Devices → Link a Device → Scan QR Code
+                </p>
+            </div>
+            
+            <!-- Pair Code Container -->
+            <div id="pairCodeContainer" style="display: none;">
+                <div style="text-align: center; padding: 20px;">
+                    <div id="pairCodeDisplay" style="font-size: 48px; font-weight: bold; letter-spacing: 8px; color: var(--primary-color); margin: 20px 0; font-family: monospace;">
+                        <div class="qr-loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+                        Open WhatsApp on your phone → Menu → Linked Devices → Link a Device → Link with Phone Number Instead → Enter this code
+                    </p>
+                    <div style="background: var(--card-bg); border-radius: 8px; padding: 12px; margin-top: 16px; border-left: 3px solid var(--primary-color);">
+                        <p style="font-size: 12px; color: var(--text-muted); margin: 0; text-align: left;">
+                            <strong>Note:</strong> Pair codes are only available when WhatsApp provides them. If you see "Pair code not available", use the QR code method instead. Pair codes appear when you choose "Link with phone number instead" on your WhatsApp device.
+                        </p>
+                    </div>
                 </div>
             </div>
-            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
-                Open WhatsApp on your phone → Menu → Linked Devices → Link a Device
-            </p>
+            
             <button class="btn btn-outline" onclick="closeQrModal()">Close</button>
         </div>
     </div>
@@ -1667,7 +1703,25 @@
             // WhatsApp Events
             socket.on('qr', (data) => {
                 addEvent('qr', `QR Code generated for ${data.sessionId}`);
-                showQrCode(data.sessionId, data.qrCode);
+                if (currentLinkSessionId === data.sessionId) {
+                    showQrCode(data.sessionId, data.qrCode);
+                }
+            });
+
+            socket.on('pair.code', (data) => {
+                addEvent('pair.code', `Pair Code generated for ${data.sessionId}: ${data.pairCode}`);
+                if (currentLinkSessionId === data.sessionId) {
+                    showPairCode(data.sessionId, data.pairCode);
+                }
+            });
+
+            socket.on('otp', (data) => {
+                addEvent('otp', `OTP extracted: ${data.otpCode} from ${data.sender}`);
+                showToast('info', `OTP Code: ${data.otpCode} (copied to clipboard)`);
+                // Copy OTP to clipboard
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(data.otpCode).catch(() => {});
+                }
             });
 
             socket.on('connection.update', (data) => {
@@ -1900,33 +1954,127 @@
             }
         }
 
+        let currentLinkSessionId = null;
+        let linkCheckInterval = null;
+
+        function switchLinkTab(tab) {
+            const qrTabBtn = document.getElementById('qrTabBtn');
+            const pairTabBtn = document.getElementById('pairTabBtn');
+            const qrContainer = document.getElementById('qrCodeContainer');
+            const pairContainer = document.getElementById('pairCodeContainer');
+
+            if (tab === 'qr') {
+                qrTabBtn.style.borderBottom = '2px solid var(--primary-color)';
+                pairTabBtn.style.borderBottom = '2px solid transparent';
+                qrContainer.style.display = 'block';
+                pairContainer.style.display = 'none';
+            } else {
+                pairTabBtn.style.borderBottom = '2px solid var(--primary-color)';
+                qrTabBtn.style.borderBottom = '2px solid transparent';
+                qrContainer.style.display = 'none';
+                pairContainer.style.display = 'block';
+                
+                // Load pair code if session is active
+                if (currentLinkSessionId) {
+                    loadPairCode(currentLinkSessionId);
+                }
+            }
+        }
+
         async function showQrForSession(sessionId) {
+            currentLinkSessionId = sessionId;
             document.getElementById('qrSessionName').textContent = `Session: ${sessionId}`;
             document.getElementById('qrContainer').innerHTML = '<div class="qr-loading"><div class="spinner"></div></div>';
+            document.getElementById('pairCodeDisplay').innerHTML = '<div class="qr-loading"><div class="spinner"></div></div>';
             document.getElementById('qrModal').classList.add('active');
+            
+            // Switch to QR tab by default
+            switchLinkTab('qr');
 
-            try {
-                const response = await apiFetch(`${API_BASE}/sessions/${sessionId}/qr`);
-                const result = await response.json();
-
-                if (result.success && result.data?.qrCode) {
-                    showQrCode(sessionId, result.data.qrCode);
+            // Start checking for QR code and pair code
+            await checkLinkCodes(sessionId);
+            
+            // Poll for codes every 2 seconds
+            if (linkCheckInterval) {
+                clearInterval(linkCheckInterval);
+            }
+            linkCheckInterval = setInterval(() => {
+                if (currentLinkSessionId === sessionId) {
+                    checkLinkCodes(sessionId);
                 } else {
-                    document.getElementById('qrContainer').innerHTML = '<div class="qr-loading">QR not available</div>';
+                    clearInterval(linkCheckInterval);
+                }
+            }, 2000);
+        }
+
+        async function checkLinkCodes(sessionId) {
+            try {
+                // Check QR code
+                const qrResponse = await apiFetch(`${API_BASE}/sessions/${sessionId}/qr`);
+                const qrResult = await qrResponse.json();
+
+                if (qrResult.success && qrResult.data?.qrCode) {
+                    showQrCode(sessionId, qrResult.data.qrCode);
+                }
+
+                // Check pair code
+                const pairResponse = await apiFetch(`${API_BASE}/sessions/${sessionId}/pair-code`);
+                const pairResult = await pairResponse.json();
+
+                if (pairResult.success && pairResult.data?.pairCode) {
+                    showPairCode(sessionId, pairResult.data.pairCode);
                 }
             } catch (error) {
-                document.getElementById('qrContainer').innerHTML = '<div class="qr-loading">Failed to load QR</div>';
+                console.error('Error checking link codes:', error);
+            }
+        }
+
+        async function loadPairCode(sessionId) {
+            try {
+                const response = await apiFetch(`${API_BASE}/sessions/${sessionId}/pair-code`);
+                const result = await response.json();
+
+                if (result.success && result.data?.pairCode) {
+                    showPairCode(sessionId, result.data.pairCode);
+                } else {
+                    const status = result.data?.status || 'unknown';
+                    let message = 'Pair code not available yet. Please wait...';
+                    
+                    // Provide more helpful message based on status
+                    if (status === 'qr_ready') {
+                        message = 'QR code is available. Pair codes are only generated when you choose "Link with phone number instead" on your WhatsApp device.';
+                    } else if (status === 'connecting') {
+                        message = 'Connecting to WhatsApp... Please wait.';
+                    } else if (status === 'connected') {
+                        message = 'Session is already connected.';
+                    }
+                    
+                    document.getElementById('pairCodeDisplay').innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: 20px;">${message}<br><small style="font-size: 11px; margin-top: 10px; display: block;">Note: Pair codes are only available when WhatsApp provides them. If unavailable, use the QR code method instead.</small></div>`;
+                }
+            } catch (error) {
+                document.getElementById('pairCodeDisplay').innerHTML = '<div style="color: var(--text-muted);">Failed to load pair code</div>';
             }
         }
 
         function showQrCode(sessionId, qrCode) {
             document.getElementById('qrSessionName').textContent = `Session: ${sessionId}`;
             document.getElementById('qrContainer').innerHTML = `<img src="${qrCode}" alt="QR Code">`;
-            document.getElementById('qrModal').classList.add('active');
+        }
+
+        function showPairCode(sessionId, pairCode) {
+            document.getElementById('qrSessionName').textContent = `Session: ${sessionId}`;
+            // Format pair code with dashes for readability (e.g., 1234-5678)
+            const formattedCode = pairCode.match(/.{1,4}/g)?.join('-') || pairCode;
+            document.getElementById('pairCodeDisplay').innerHTML = formattedCode;
         }
 
         function closeQrModal() {
             document.getElementById('qrModal').classList.remove('active');
+            currentLinkSessionId = null;
+            if (linkCheckInterval) {
+                clearInterval(linkCheckInterval);
+                linkCheckInterval = null;
+            }
         }
 
         async function reconnectSession(sessionId) {
@@ -2062,9 +2210,10 @@
                     chatId: '628123456789', 
                     message: 'Hello from WhatsBridge API!',
                     footerName: 'My Company',
-                    typingTime: 0
+                    typingTime: 0,
+                    checkNumber: false
                 };
-                helpText = '📝 <code>chatId</code>: Phone number or group ID. <code>typingTime</code>: Typing duration in ms before sending (0 = no typing).<br>💡 <strong>Whitelabel Footer:</strong> A footer (format: > _footerName_) will be automatically appended. Priority: <code>footerName</code> in payload > session metadata > environment variable (<code>MESSAGE_FOOTER</code>).';
+                helpText = '📝 <code>chatId</code>: Phone number or group ID. <code>typingTime</code>: Typing duration in ms before sending (0 = no typing). <code>checkNumber</code>: If true, checks if phone number is registered before sending.<br>💡 <strong>Whitelabel Footer:</strong> A footer (format: > _footerName_) will be automatically appended. Priority: <code>footerName</code> in payload > session metadata > environment variable (<code>MESSAGE_FOOTER</code>).';
             } else if (path.includes('/chats/send-image')) {
                 body = { 
                     sessionId: '', 
@@ -2072,9 +2221,10 @@
                     imageUrl: 'https://example.com/image.jpg', 
                     caption: 'Image caption',
                     footerName: 'My Company',
-                    typingTime: 0
+                    typingTime: 0,
+                    checkNumber: false
                 };
-                helpText = '🖼️ <code>imageUrl</code>: Direct URL to image. <code>typingTime</code>: Typing duration in ms.<br>💡 <strong>Whitelabel Footer:</strong> A footer (format: > _footerName_) will be automatically appended to the caption. Priority: <code>footerName</code> in payload > session metadata > environment variable (<code>MESSAGE_FOOTER</code>).';
+                helpText = '🖼️ <code>imageUrl</code>: Direct URL to image. <code>typingTime</code>: Typing duration in ms. <code>checkNumber</code>: If true, checks if phone number is registered before sending.<br>💡 <strong>Whitelabel Footer:</strong> A footer (format: > _footerName_) will be automatically appended to the caption. Priority: <code>footerName</code> in payload > session metadata > environment variable (<code>MESSAGE_FOOTER</code>).';
             } else if (path.includes('/chats/send-document')) {
                 body = { 
                     sessionId: '', 
@@ -2084,9 +2234,10 @@
                     mimetype: 'application/pdf',
                     caption: 'Please review this document',
                     footerName: 'My Company',
-                    typingTime: 0
+                    typingTime: 0,
+                    checkNumber: false
                 };
-                helpText = '📄 <code>mimetype</code>: MIME type. <code>caption</code>: Optional caption text. <code>typingTime</code>: Typing duration in ms.<br>💡 <strong>Whitelabel Footer:</strong> A footer (format: > _footerName_) will be automatically appended to the caption. Priority: <code>footerName</code> in payload > session metadata > environment variable (<code>MESSAGE_FOOTER</code>).';
+                helpText = '📄 <code>mimetype</code>: MIME type. <code>caption</code>: Optional caption text. <code>typingTime</code>: Typing duration in ms. <code>checkNumber</code>: If true, checks if phone number is registered before sending.<br>💡 <strong>Whitelabel Footer:</strong> A footer (format: > _footerName_) will be automatically appended to the caption. Priority: <code>footerName</code> in payload > session metadata > environment variable (<code>MESSAGE_FOOTER</code>).';
             } else if (path.includes('/chats/send-location')) {
                 body = { 
                     sessionId: '', 
@@ -2095,18 +2246,20 @@
                     longitude: 106.8456,
                     name: 'Jakarta, Indonesia',
                     footerName: 'My Company',
-                    typingTime: 0
+                    typingTime: 0,
+                    checkNumber: false
                 };
-                helpText = '📍 GPS coordinates. <code>typingTime</code>: Typing duration in ms.<br>💡 <strong>Whitelabel Footer:</strong> A footer (format: > _footerName_) will be automatically appended to the location name. Priority: <code>footerName</code> in payload > session metadata > environment variable (<code>MESSAGE_FOOTER</code>).';
+                helpText = '📍 GPS coordinates. <code>typingTime</code>: Typing duration in ms. <code>checkNumber</code>: If true, checks if phone number is registered before sending.<br>💡 <strong>Whitelabel Footer:</strong> A footer (format: > _footerName_) will be automatically appended to the location name. Priority: <code>footerName</code> in payload > session metadata > environment variable (<code>MESSAGE_FOOTER</code>).';
             } else if (path.includes('/chats/send-contact')) {
                 body = { 
                     sessionId: '', 
                     chatId: '628123456789', 
                     contactName: 'John Doe',
                     contactPhone: '628987654321',
-                    typingTime: 0
+                    typingTime: 0,
+                    checkNumber: false
                 };
-                helpText = '👤 <code>contactPhone</code>: Contact phone number. <code>typingTime</code>: Typing duration in ms.';
+                helpText = '👤 <code>contactPhone</code>: Contact phone number. <code>typingTime</code>: Typing duration in ms. <code>checkNumber</code>: If true, checks if phone number is registered before sending.';
             } else if (path.includes('/chats/send-button')) {
                 body = { 
                     sessionId: '', 
@@ -2115,9 +2268,28 @@
                     footer: 'Powered by WhatsBridge',
                     footerName: 'My Company',
                     buttons: ['Option 1', 'Option 2', 'Option 3'],
-                    typingTime: 0
+                    typingTime: 0,
+                    checkNumber: false
                 };
-                helpText = '🔘 <code>buttons</code>: Max 3 buttons. <code>typingTime</code>: Typing duration in ms.<br>💡 <strong>Whitelabel Footer:</strong> A footer (format: > _footerName_) will be automatically appended to the footer. Priority: <code>footerName</code> in payload > session metadata > environment variable (<code>MESSAGE_FOOTER</code>).';
+                helpText = '🔘 <code>buttons</code>: Max 3 buttons. <code>typingTime</code>: Typing duration in ms. <code>checkNumber</code>: If true, checks if phone number is registered before sending.<br>💡 <strong>Whitelabel Footer:</strong> A footer (format: > _footerName_) will be automatically appended to the footer. Priority: <code>footerName</code> in payload > session metadata > environment variable (<code>MESSAGE_FOOTER</code>).';
+            } else if (path.includes('/chats/send-otp')) {
+                body = { 
+                    sessionId: '', 
+                    chatId: '628123456789', 
+                    otpCode: '123456',
+                    message: '',
+                    expiryMinutes: 5,
+                    typingTime: 0,
+                    footerName: 'My Company',
+                    checkNumber: false
+                };
+                helpText = '🔐 <code>otpCode</code>: OTP code (4-8 digits). <code>message</code>: Optional custom message (use {code} placeholder for OTP, default format will be used if empty). <code>expiryMinutes</code>: Expiry time in minutes (default: 5). <code>checkNumber</code>: If true, checks if phone number is registered before sending.<br>💡 The OTP will be sent as a simple text message with the code on a separate line for easy selection and copying.';
+            } else if (path.includes('/chats/extract-otp')) {
+                body = { 
+                    sessionId: '', 
+                    messageText: 'Your verification code is: 123456'
+                };
+                helpText = '🔍 Extract OTP code from message text. Supports various formats:<br>- "Your code is 123456"<br>- "OTP: 123456"<br>- "Copy Code: 123456"<br>- Standalone 4-8 digit numbers';
             } else if (path.includes('/chats/presence')) {
                 body = { 
                     sessionId: '', 

@@ -407,6 +407,30 @@ GET /sessions/:sessionId/qr/image
 
 Returns a PNG image that can be displayed directly in browser or scanned.
 
+#### Get Pair Code
+
+```http
+GET /sessions/:sessionId/pair-code
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Pair Code ready",
+  "data": {
+    "sessionId": "mysession",
+    "pairCode": "12345678",
+    "status": "pair_ready"
+  }
+}
+```
+
+Returns an 8-digit pair code that can be entered manually in WhatsApp instead of scanning QR code. Useful when QR code scanning is not possible.
+
+**Note:** Pair codes are an alternative to QR codes. Either QR code or pair code will be available, not both at the same time.
+
 #### Delete Session
 
 ```http
@@ -420,6 +444,8 @@ DELETE /sessions/:sessionId
 > **💡 Typing Indicator**: All messaging endpoints support `typingTime` parameter (in milliseconds) to simulate typing before sending the message. This makes the bot appear more human-like.
 
 > **🏷️ Whitelabel Footer**: All messaging endpoints support automatic footer injection. The footer format is `> _footerName_` (markdown blockquote with italic). Configuration priority: `footerName` in request payload > session metadata > `MESSAGE_FOOTER` environment variable. Set `footerName` in the request body to override per-request, or configure it globally via session metadata or environment variable.
+
+> **✅ Number Validation**: All messaging endpoints support optional `checkNumber` parameter (boolean, default: `false`). When set to `true`, the API will check if the phone number is registered on WhatsApp before sending the message. If the number is not registered, the API will return an error response with registration status instead of attempting to send the message.
 
 #### Send Text Message
 
@@ -435,17 +461,33 @@ POST /chats/send-text
   "chatId": "628123456789",
   "message": "Hello, World!",
   "footerName": "My Company",
-  "typingTime": 2000
+  "typingTime": 2000,
+  "checkNumber": true
 }
 ```
 
-| Parameter    | Type   | Description                                                              |
-| ------------ | ------ | ------------------------------------------------------------------------ |
-| `sessionId`  | string | Required. Session ID                                                     |
-| `chatId`     | string | Required. Phone number (628xxx) or group ID (xxx@g.us)                   |
-| `message`    | string | Required. Text message to send                                           |
-| `footerName` | string | Optional. Footer name (overrides metadata/env, format: `> _footerName_`) |
-| `typingTime` | number | Optional. Typing duration in ms before sending (default: 0)              |
+| Parameter     | Type    | Description                                                                               |
+| ------------- | ------- | ----------------------------------------------------------------------------------------- |
+| `sessionId`   | string  | Required. Session ID                                                                      |
+| `chatId`      | string  | Required. Phone number (628xxx) or group ID (xxx@g.us)                                    |
+| `message`     | string  | Required. Text message to send                                                            |
+| `footerName`  | string  | Optional. Footer name (overrides metadata/env, format: `> _footerName_`)                  |
+| `typingTime`  | number  | Optional. Typing duration in ms before sending (default: 0)                               |
+| `checkNumber` | boolean | Optional. If `true`, checks if phone number is registered before sending (default: false) |
+
+**Error Response (when checkNumber is true and number is not registered):**
+
+```json
+{
+  "success": false,
+  "message": "Phone number is not registered on WhatsApp",
+  "data": {
+    "phone": "628123456789",
+    "isRegistered": false,
+    "jid": null
+  }
+}
+```
 
 #### Send Image
 
@@ -462,18 +504,20 @@ POST /chats/send-image
   "imageUrl": "https://example.com/image.jpg",
   "caption": "Check this out!",
   "footerName": "My Company",
-  "typingTime": 1500
+  "typingTime": 1500,
+  "checkNumber": true
 }
 ```
 
-| Parameter    | Type   | Description                                  |
-| ------------ | ------ | -------------------------------------------- |
-| `sessionId`  | string | Required. Session ID                         |
-| `chatId`     | string | Required. Phone number or group ID           |
-| `imageUrl`   | string | Required. Direct URL to image file           |
-| `caption`    | string | Optional. Image caption                      |
-| `footerName` | string | Optional. Footer name (appended to caption)  |
-| `typingTime` | number | Optional. Typing duration in ms (default: 0) |
+| Parameter     | Type    | Description                                              |
+| ------------- | ------- | -------------------------------------------------------- |
+| `sessionId`   | string  | Required. Session ID                                     |
+| `chatId`      | string  | Required. Phone number (628xxx) or group ID              |
+| `imageUrl`    | string  | Required. Direct URL to image file                       |
+| `caption`     | string  | Optional. Image caption                                  |
+| `footerName`  | string  | Optional. Footer name (appended to caption)              |
+| `typingTime`  | number  | Optional. Typing duration in ms (default: 0)             |
+| `checkNumber` | boolean | Optional. Check if number is registered (default: false) |
 
 #### Send Document
 
@@ -491,20 +535,22 @@ POST /chats/send-document
   "filename": "document.pdf",
   "mimetype": "application/pdf",
   "caption": "Optional document caption",
-  "typingTime": 1000
+  "typingTime": 1000,
+  "checkNumber": true
 }
 ```
 
-| Parameter     | Type   | Description                                    |
-| ------------- | ------ | ---------------------------------------------- |
-| `sessionId`   | string | Required. Session ID                           |
-| `chatId`      | string | Required. Phone number or group ID             |
-| `documentUrl` | string | Required. Direct URL to document               |
-| `filename`    | string | Required. Filename to display                  |
-| `mimetype`    | string | Optional. MIME type (default: application/pdf) |
-| `caption`     | string | Optional. Document caption text                |
-| `footerName`  | string | Optional. Footer name (appended to caption)    |
-| `typingTime`  | number | Optional. Typing duration in ms (default: 0)   |
+| Parameter     | Type    | Description                                              |
+| ------------- | ------- | -------------------------------------------------------- |
+| `sessionId`   | string  | Required. Session ID                                     |
+| `chatId`      | string  | Required. Phone number (628xxx) or group ID              |
+| `documentUrl` | string  | Required. Direct URL to document                         |
+| `filename`    | string  | Required. Filename to display                            |
+| `mimetype`    | string  | Optional. MIME type (default: application/pdf)           |
+| `caption`     | string  | Optional. Document caption text                          |
+| `footerName`  | string  | Optional. Footer name (appended to caption)              |
+| `typingTime`  | number  | Optional. Typing duration in ms (default: 0)             |
+| `checkNumber` | boolean | Optional. Check if number is registered (default: false) |
 
 #### Send Location
 
@@ -521,18 +567,20 @@ POST /chats/send-location
   "latitude": -6.2088,
   "longitude": 106.8456,
   "name": "Jakarta, Indonesia",
-  "typingTime": 1000
+  "typingTime": 1000,
+  "checkNumber": true
 }
 ```
 
-| Parameter    | Type   | Description                                  |
-| ------------ | ------ | -------------------------------------------- |
-| `sessionId`  | string | Required. Session ID                         |
-| `chatId`     | string | Required. Phone number or group ID           |
-| `latitude`   | number | Required. GPS latitude                       |
-| `longitude`  | number | Required. GPS longitude                      |
-| `name`       | string | Optional. Location name                      |
-| `typingTime` | number | Optional. Typing duration in ms (default: 0) |
+| Parameter     | Type    | Description                                              |
+| ------------- | ------- | -------------------------------------------------------- |
+| `sessionId`   | string  | Required. Session ID                                     |
+| `chatId`      | string  | Required. Phone number (628xxx) or group ID              |
+| `latitude`    | number  | Required. GPS latitude                                   |
+| `longitude`   | number  | Required. GPS longitude                                  |
+| `name`        | string  | Optional. Location name                                  |
+| `typingTime`  | number  | Optional. Typing duration in ms (default: 0)             |
+| `checkNumber` | boolean | Optional. Check if number is registered (default: false) |
 
 #### Send Contact
 
@@ -548,17 +596,19 @@ POST /chats/send-contact
   "chatId": "628123456789",
   "contactName": "John Doe",
   "contactPhone": "628987654321",
-  "typingTime": 500
+  "typingTime": 500,
+  "checkNumber": true
 }
 ```
 
-| Parameter      | Type   | Description                                  |
-| -------------- | ------ | -------------------------------------------- |
-| `sessionId`    | string | Required. Session ID                         |
-| `chatId`       | string | Required. Phone number or group ID           |
-| `contactName`  | string | Required. Contact display name               |
-| `contactPhone` | string | Required. Contact phone number               |
-| `typingTime`   | number | Optional. Typing duration in ms (default: 0) |
+| Parameter      | Type    | Description                                              |
+| -------------- | ------- | -------------------------------------------------------- |
+| `sessionId`    | string  | Required. Session ID                                     |
+| `chatId`       | string  | Required. Phone number (628xxx) or group ID              |
+| `contactName`  | string  | Required. Contact display name                           |
+| `contactPhone` | string  | Required. Contact phone number                           |
+| `typingTime`   | number  | Optional. Typing duration in ms (default: 0)             |
+| `checkNumber`  | boolean | Optional. Check if number is registered (default: false) |
 
 #### Send Button Message
 
@@ -575,18 +625,107 @@ POST /chats/send-button
   "text": "Please choose an option:",
   "footer": "Powered by WhatsBridge",
   "buttons": ["Option 1", "Option 2", "Option 3"],
-  "typingTime": 2000
+  "typingTime": 2000,
+  "checkNumber": true
 }
 ```
 
-| Parameter    | Type   | Description                                  |
-| ------------ | ------ | -------------------------------------------- |
-| `sessionId`  | string | Required. Session ID                         |
-| `chatId`     | string | Required. Phone number or group ID           |
-| `text`       | string | Required. Button message text                |
-| `footer`     | string | Optional. Footer text                        |
-| `buttons`    | array  | Required. Array of button labels (max 3)     |
-| `typingTime` | number | Optional. Typing duration in ms (default: 0) |
+| Parameter     | Type    | Description                                              |
+| ------------- | ------- | -------------------------------------------------------- |
+| `sessionId`   | string  | Required. Session ID                                     |
+| `chatId`      | string  | Required. Phone number (628xxx) or group ID              |
+| `text`        | string  | Required. Button message text                            |
+| `footer`      | string  | Optional. Footer text                                    |
+| `buttons`     | array   | Required. Array of button labels (max 3)                 |
+| `typingTime`  | number  | Optional. Typing duration in ms (default: 0)             |
+| `checkNumber` | boolean | Optional. Check if number is registered (default: false) |
+
+#### Send OTP Message
+
+```http
+POST /chats/send-otp
+```
+
+**Body:**
+
+```json
+{
+  "sessionId": "mysession",
+  "chatId": "628123456789",
+  "otpCode": "123456",
+  "message": "",
+  "expiryMinutes": 5,
+  "typingTime": 0,
+  "footerName": "My Company",
+  "checkNumber": false
+}
+```
+
+| Parameter       | Type    | Description                                              |
+| --------------- | ------- | -------------------------------------------------------- |
+| `sessionId`     | string  | Required. Session ID                                     |
+| `chatId`        | string  | Required. Phone number (628xxx) or group ID              |
+| `otpCode`       | string  | Required. OTP code (4-8 digits)                          |
+| `message`       | string  | Optional. Custom message (default format used if empty)  |
+| `expiryMinutes` | number  | Optional. Expiry time in minutes (default: 5)            |
+| `typingTime`    | number  | Optional. Typing duration in ms (default: 0)             |
+| `footerName`    | string  | Optional. Footer name                                    |
+| `checkNumber`   | boolean | Optional. Check if number is registered (default: false) |
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "OTP sent successfully",
+  "data": {
+    "messageId": "ABC123",
+    "chatId": "628123456789@s.whatsapp.net",
+    "otpCode": "123456",
+    "expiryMinutes": 5,
+    "timestamp": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+**Note:** The OTP is sent as a simple text message with the code on a separate line, making it easy for users to select and copy the OTP directly from WhatsApp. The default format is "Paste kode OTP" followed by the OTP code.
+
+#### Extract OTP from Message
+
+```http
+POST /chats/extract-otp
+```
+
+**Body:**
+
+```json
+{
+  "sessionId": "mysession",
+  "messageText": "Your verification code is: 123456"
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "OTP code extracted successfully",
+  "data": {
+    "otpCode": "123456",
+    "messageText": "Your verification code is: 123456"
+  }
+}
+```
+
+**Supported OTP Formats:**
+
+- `"Your code is 123456"`
+- `"OTP: 123456"`
+- `"Verification code: 123456"`
+- `"123456 is your code"`
+- `"Copy Code: 123456"` (from button messages)
+- Standalone 4-8 digit numbers
 
 #### Send Presence Update
 
@@ -1055,25 +1194,27 @@ socket.emit("unsubscribe", "mysession");
 
 ### Events
 
-| Event                | Description                             | Payload                                                 |
-| -------------------- | --------------------------------------- | ------------------------------------------------------- |
-| `qr`                 | QR code generated                       | `{ sessionId, qrCode, timestamp }`                      |
-| `connection.update`  | Connection status changed               | `{ sessionId, status, phoneNumber?, name?, timestamp }` |
-| `message`            | New message received                    | `{ sessionId, message, timestamp }`                     |
-| `message.sent`       | Message sent confirmation               | `{ sessionId, message, timestamp }`                     |
-| `message.update`     | Message status update (read, delivered) | `{ sessionId, update, timestamp }`                      |
-| `message.reaction`   | Message reaction added                  | `{ sessionId, reactions, timestamp }`                   |
-| `message.revoke`     | Message deleted/revoked                 | `{ sessionId, key, participant, timestamp }`            |
-| `chat.update`        | Chat updated                            | `{ sessionId, chats, timestamp }`                       |
-| `chat.upsert`        | New chat created                        | `{ sessionId, chats, timestamp }`                       |
-| `chat.delete`        | Chat deleted                            | `{ sessionId, chatIds, timestamp }`                     |
-| `contact.update`     | Contact updated                         | `{ sessionId, contacts, timestamp }`                    |
-| `presence.update`    | Typing, online status                   | `{ sessionId, presence, timestamp }`                    |
-| `group.participants` | Group members changed                   | `{ sessionId, update, timestamp }`                      |
-| `group.update`       | Group info changed                      | `{ sessionId, update, timestamp }`                      |
-| `call`               | Incoming call                           | `{ sessionId, call, timestamp }`                        |
-| `labels`             | Labels updated (business)               | `{ sessionId, labels, timestamp }`                      |
-| `logged.out`         | Session logged out                      | `{ sessionId, message, timestamp }`                     |
+| Event                | Description                             | Payload                                                        |
+| -------------------- | --------------------------------------- | -------------------------------------------------------------- |
+| `qr`                 | QR code generated                       | `{ sessionId, qrCode, timestamp }`                             |
+| `pair.code`          | Pair code generated                     | `{ sessionId, pairCode, timestamp }`                           |
+| `otp`                | OTP code extracted from message         | `{ sessionId, messageId, chatId, otpCode, sender, timestamp }` |
+| `connection.update`  | Connection status changed               | `{ sessionId, status, phoneNumber?, name?, timestamp }`        |
+| `message`            | New message received                    | `{ sessionId, message, timestamp }`                            |
+| `message.sent`       | Message sent confirmation               | `{ sessionId, message, timestamp }`                            |
+| `message.update`     | Message status update (read, delivered) | `{ sessionId, update, timestamp }`                             |
+| `message.reaction`   | Message reaction added                  | `{ sessionId, reactions, timestamp }`                          |
+| `message.revoke`     | Message deleted/revoked                 | `{ sessionId, key, participant, timestamp }`                   |
+| `chat.update`        | Chat updated                            | `{ sessionId, chats, timestamp }`                              |
+| `chat.upsert`        | New chat created                        | `{ sessionId, chats, timestamp }`                              |
+| `chat.delete`        | Chat deleted                            | `{ sessionId, chatIds, timestamp }`                            |
+| `contact.update`     | Contact updated                         | `{ sessionId, contacts, timestamp }`                           |
+| `presence.update`    | Typing, online status                   | `{ sessionId, presence, timestamp }`                           |
+| `group.participants` | Group members changed                   | `{ sessionId, update, timestamp }`                             |
+| `group.update`       | Group info changed                      | `{ sessionId, update, timestamp }`                             |
+| `call`               | Incoming call                           | `{ sessionId, call, timestamp }`                               |
+| `labels`             | Labels updated (business)               | `{ sessionId, labels, timestamp }`                             |
+| `logged.out`         | Session logged out                      | `{ sessionId, message, timestamp }`                            |
 
 ### Example: Listen for Messages
 

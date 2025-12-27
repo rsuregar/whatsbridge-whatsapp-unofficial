@@ -22,11 +22,13 @@ class WhatsAppSession {
   private sessionId: string;
   private socket: any;
   private qrCode: string | null;
+  private pairCode: string | null;
   private connectionStatus:
     | "connected"
     | "disconnected"
     | "connecting"
     | "qr_ready"
+    | "pair_ready"
     | "error";
   private authFolder: string;
   private storeFile: string;
@@ -36,6 +38,7 @@ class WhatsAppSession {
   private name: string | null;
   private store: BaileysStore | null;
   private storeInterval: NodeJS.Timeout | null;
+  private authState: any;
   private metadata: Record<string, any>;
   private webhooks: Array<{ url: string; events?: string[] }>;
 
@@ -43,6 +46,7 @@ class WhatsAppSession {
     this.sessionId = sessionId;
     this.socket = null;
     this.qrCode = null;
+    this.pairCode = null;
     this.connectionStatus = "disconnected";
     this.authFolder = path.join(process.cwd(), "sessions", sessionId);
     this.storeFile = path.join(this.authFolder, "store.json");
@@ -142,6 +146,31 @@ class WhatsAppSession {
     this.webhooks = this.webhooks.filter((w) => w.url !== url);
     this._saveConfig();
     return this.getInfo();
+  }
+
+  /**
+   * Check for pair code in saved credentials file
+   */
+  _checkPairCodeFromFile(): void {
+    try {
+      const credsFile = path.join(this.authFolder, "creds.json");
+      if (fs.existsSync(credsFile)) {
+        const credsData = JSON.parse(fs.readFileSync(credsFile, "utf8"));
+        if (credsData?.pairingCode && credsData.pairingCode !== this.pairCode) {
+          this.pairCode = credsData.pairingCode;
+          this.connectionStatus = "pair_ready";
+          this.qrCode = null;
+          console.log(
+            `🔢 [${this.sessionId}] Pair Code found in creds file: ${this.pairCode}`
+          );
+          if (this.pairCode) {
+            wsManager.emitPairCode(this.sessionId, this.pairCode);
+          }
+        }
+      }
+    } catch (e: any | Error) {
+      // Silent fail - file might not exist or be locked
+    }
   }
 
   /**
@@ -251,13 +280,26 @@ class WhatsAppSession {
             this.store.cleanupOldMedia(100);
             this.store.writeToFile(this.storeFile);
           }
+          // Also check for pair code in saved credentials
+          this._checkPairCodeFromFile();
         } catch (e: any | Error) {
           // Silent fail
         }
       }, 30_000);
 
       const { state, saveCreds } = await useMultiFileAuthState(this.authFolder);
+      this.authState = state; // Store reference to auth state
       const { version } = await fetchLatestBaileysVersion();
+
+      // Check if pair code exists in saved credentials
+      if (state.creds?.pairingCode) {
+        this.pairCode = state.creds.pairingCode;
+        this.connectionStatus = "pair_ready";
+        console.log(
+          `🔢 [${this.sessionId}] Pair Code found in credentials: ${this.pairCode}`
+        );
+        wsManager.emitPairCode(this.sessionId, this.pairCode);
+      }
 
       this.socket = makeWASocket({
         version,
@@ -267,11 +309,21 @@ class WhatsAppSession {
         syncFullHistory: true,
       });
 
+      // Store reference to socket's auth state if available
+      if (this.socket.authState) {
+        this.authState = this.socket.authState;
+      }
+
       // Bind store to socket events
       this.store.bind(this.socket.ev);
 
       // Setup event listeners
       this._setupEventListeners(saveCreds);
+
+      // Check for pair code after a short delay (in case it's generated asynchronously)
+      setTimeout(() => {
+        this._checkPairCodeFromFile();
+      }, 2000);
 
       return { success: true, message: "Initializing connection..." };
     } catch (error: any | Error) {
@@ -287,17 +339,65 @@ class WhatsAppSession {
   _setupEventListeners(saveCreds: () => void): void {
     // Connection update
     this.socket.ev.on("connection.update", async (update: any) => {
-      const { connection, lastDisconnect, qr } = update;
+      const { connection, lastDisconnect, qr, isNewLogin } = update;
+
+      // Debug: Log update structure when QR or pair code might be available
+      if (connection === "connecting" || connection === "open") {
+        // Log all update fields to help debug pair code detection
+        const relevantKeys = Object.keys(update).filter(
+          (key) =>
+            !["connection", "lastDisconnect"].includes(key) &&
+            (key.toLowerCase().includes("pair") ||
+              key.toLowerCase().includes("code") ||
+              key.toLowerCase().includes("qr") ||
+              key === "isNewLogin")
+        );
+        if (relevantKeys.length > 0) {
+          console.log(
+            `🔍 [${this.sessionId}] Connection update (relevant keys):`,
+            relevantKeys.join(", ")
+          );
+          // Log the actual values for debugging (without sensitive data)
+          relevantKeys.forEach((key) => {
+            const value = update[key];
+            if (typeof value === "string" && value.length < 50) {
+              console.log(`  ${key}:`, value);
+            }
+          });
+        }
+      }
 
       if (qr) {
         this.qrCode = await qrcode.toDataURL(qr);
         this.connectionStatus = "qr_ready";
+        this.pairCode = null;
         console.log(
           `📱 [${this.sessionId}] QR Code generated! Scan dengan WhatsApp Anda.`
         );
 
         // Emit QR code to WebSocket
         wsManager.emitQRCode(this.sessionId, this.qrCode);
+      }
+
+      // Handle pair code - check multiple possible field names
+      // Baileys might use different field names in different versions
+      const pairCode =
+        update.pairingCode ||
+        update.pairCode ||
+        update.pair_code ||
+        update.pairing_code ||
+        update.code;
+
+      if (pairCode && typeof pairCode === "string") {
+        this.pairCode = pairCode;
+        this.connectionStatus = "pair_ready";
+        this.qrCode = null;
+        console.log(
+          `🔢 [${this.sessionId}] Pair Code generated: ${this.pairCode}`
+        );
+
+        // Emit pair code to WebSocket
+        wsManager.emitPairCode(this.sessionId, this.pairCode);
       }
 
       if (connection === "close") {
@@ -311,6 +411,7 @@ class WhatsAppSession {
         );
         this.connectionStatus = "disconnected";
         this.qrCode = null;
+        this.pairCode = null;
 
         // Emit connection status to WebSocket
         wsManager.emitConnectionStatus(this.sessionId, "disconnected", {
@@ -337,6 +438,7 @@ class WhatsAppSession {
         console.log(`✅ [${this.sessionId}] WhatsApp Connected Successfully!`);
         this.connectionStatus = "connected";
         this.qrCode = null;
+        this.pairCode = null;
 
         if (this.socket.user) {
           this.phoneNumber = this.socket.user.id.split(":")[0];
@@ -367,8 +469,31 @@ class WhatsAppSession {
       }
     });
 
-    // Save credentials
-    this.socket.ev.on("creds.update", saveCreds);
+    // Save credentials and check for pair code updates
+    this.socket.ev.on("creds.update", () => {
+      saveCreds();
+      // Check if pair code was generated/updated in credentials
+      // Try multiple ways to access the credentials
+      const creds =
+        this.socket?.authState?.creds ||
+        this.authState?.creds ||
+        (this.socket as any)?.user?.creds;
+
+      if (creds?.pairingCode) {
+        const newPairCode = creds.pairingCode;
+        if (newPairCode !== this.pairCode && newPairCode) {
+          this.pairCode = newPairCode;
+          this.connectionStatus = "pair_ready";
+          this.qrCode = null;
+          console.log(
+            `🔢 [${this.sessionId}] Pair Code updated from credentials: ${this.pairCode}`
+          );
+          if (this.pairCode) {
+            wsManager.emitPairCode(this.sessionId, this.pairCode);
+          }
+        }
+      }
+    });
 
     // Messages upsert (new messages)
     this.socket.ev.on("messages.upsert", async (m: any) => {
@@ -385,6 +510,17 @@ class WhatsAppSession {
         // Emit message to WebSocket
         const formattedMessage = MessageFormatter.formatMessage(message);
         wsManager.emitMessage(this.sessionId, formattedMessage);
+
+        // If message contains OTP, emit OTP event
+        if (formattedMessage?.otpCode) {
+          wsManager.emitOTP(this.sessionId, {
+            messageId: formattedMessage.id,
+            chatId: formattedMessage.chatId,
+            otpCode: formattedMessage.otpCode,
+            sender: formattedMessage.sender,
+            timestamp: formattedMessage.timestamp,
+          });
+        }
 
         // Send webhook
         this._sendWebhook("message", formattedMessage);
@@ -482,6 +618,7 @@ class WhatsAppSession {
       phoneNumber: this.phoneNumber,
       name: this.name,
       qrCode: this.qrCode,
+      pairCode: this.pairCode,
       storeStats: this.store ? this.store.getStats() : null,
       metadata: this.metadata,
       webhooks: this.webhooks,
@@ -887,6 +1024,106 @@ class WhatsAppSession {
           timestamp: new Date().toISOString(),
         },
       };
+    } catch (error: any | Error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  // ==================== OTP MESSAGES ====================
+
+  /**
+   * Send OTP message with easily copyable format
+   * Uses sendTextMessage internally for reliability
+   * @param chatId - Chat ID (phone number)
+   * @param otpCode - OTP code to send
+   * @param message - Optional custom message (default format will be used if empty)
+   * @param expiryMinutes - Optional expiry time in minutes
+   * @param typingTime - Typing duration in ms
+   * @param footerName - Optional footer name
+   * @returns ApiResponse
+   */
+  async sendOTP(
+    chatId: string,
+    otpCode: string,
+    message: string = "",
+    expiryMinutes: number = 5,
+    typingTime: number = 0,
+    footerName: string | null = null
+  ): Promise<any> {
+    try {
+      // Format OTP message - simple text format that makes OTP easy to copy
+      // The OTP code is placed on its own line with clear formatting and bold highlighting
+      let otpMessage: string;
+      
+      if (message && message.includes("{code}")) {
+        // If custom message has {code} placeholder, replace it with bold OTP code value
+        // Extract {code} and replace with bold formatted OTP code
+        // Ensure no spaces around asterisks for proper WhatsApp formatting
+        otpMessage = message.replace(/{code}/g, `*${otpCode}*`);
+      } else if (message) {
+        // If message doesn't have {code}, send message as-is (no formatting changes)
+        otpMessage = message;
+      } else {
+        // If message is empty, use default format with OTP code
+        // Default format: OTP code on separate line with bold highlighting for easy selection
+        otpMessage = `Paste kode OTP\n\n*${otpCode}*\n\nKode ini berlaku selama ${expiryMinutes} menit.`;
+      }
+
+      // Send message directly to ensure formatting is preserved
+      // Baileys should automatically handle markdown formatting (asterisks for bold)
+      try {
+        if (!this.socket || this.connectionStatus !== "connected") {
+          return { success: false, message: "Session not connected" };
+        }
+
+        const jid = this.formatChatId(chatId);
+
+        // Simulate typing if typingTime > 0
+        await this._simulateTyping(jid, typingTime);
+
+        // Append footer if configured
+        const footer = this._getFooter(footerName);
+        const messageWithFooter = otpMessage + footer;
+
+        // Send message - Baileys will automatically handle markdown formatting
+        const result = await this.socket.sendMessage(jid, {
+          text: messageWithFooter,
+        });
+
+        return {
+          success: true,
+          message: "OTP sent successfully",
+          data: {
+            messageId: result.key.id,
+            chatId: jid,
+            otpCode: otpCode,
+            expiryMinutes: expiryMinutes,
+            timestamp: new Date().toISOString(),
+          },
+        };
+      } catch (error: any | Error) {
+        return {
+          success: false,
+          message: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+
+      // If successful, add OTP-specific data to response
+      if (result.success) {
+        return {
+          ...result,
+          data: {
+            ...result.data,
+            otpCode: otpCode,
+            expiryMinutes: expiryMinutes,
+          },
+        };
+      }
+
+      return result;
     } catch (error: any | Error) {
       return {
         success: false,

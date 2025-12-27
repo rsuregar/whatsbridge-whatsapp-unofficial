@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from "express";
 import whatsappManager from "../services/whatsapp";
 import { SessionOptions } from "../types";
+import MessageFormatter from "../services/whatsapp/MessageFormatter";
 
 const router = express.Router();
 
@@ -293,6 +294,57 @@ router.get("/sessions/:sessionId/qr/image", (req: Request, res: Response) => {
   }
 });
 
+// Get Pair Code for session
+router.get("/sessions/:sessionId/pair-code", (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.params;
+    const sessionInfo = whatsappManager.getSessionQR(sessionId);
+
+    if (!sessionInfo) {
+      return res.status(404).json({
+        success: false,
+        message: "Session not found. Please create session first.",
+      });
+    }
+
+    if (sessionInfo.isConnected) {
+      return res.json({
+        success: true,
+        message: "Already connected to WhatsApp",
+        data: {
+          sessionId: sessionInfo.sessionId,
+          status: "connected",
+          pairCode: null,
+        },
+      });
+    }
+
+    if (!sessionInfo.pairCode) {
+      return res.status(404).json({
+        success: false,
+        message: "Pair Code not available yet. Please wait...",
+        data: { status: sessionInfo.status },
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Pair Code ready",
+      data: {
+        sessionId: sessionInfo.sessionId,
+        pairCode: sessionInfo.pairCode,
+        status: sessionInfo.status,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+    return;
+  }
+});
+
 // Delete/Logout a session
 router.delete("/sessions/:sessionId", async (req: Request, res: Response) => {
   try {
@@ -361,19 +413,78 @@ const checkSession = (
   next();
 };
 
+/**
+ * Helper function to check if a phone number is registered on WhatsApp
+ * @param session - WhatsApp session instance
+ * @param chatId - Phone number to check
+ * @returns Promise<{isRegistered: boolean, phone: string, jid: string | null}> or null if error
+ */
+async function checkNumberRegistration(
+  session: any,
+  chatId: string
+): Promise<{
+  isRegistered: boolean;
+  phone: string;
+  jid: string | null;
+} | null> {
+  try {
+    // Extract phone number from chatId (remove @s.whatsapp.net if present)
+    const phone = chatId.replace("@s.whatsapp.net", "").replace("@g.us", "");
+
+    // Skip check for group IDs
+    if (chatId.includes("@g.us")) {
+      return { isRegistered: true, phone, jid: chatId };
+    }
+
+    const result = await session.isRegistered(phone);
+    if (result.success && result.data) {
+      return {
+        isRegistered: result.data.isRegistered || false,
+        phone: result.data.phone || phone,
+        jid: result.data.jid || null,
+      };
+    }
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
+
 // Send text message
 router.post(
   "/chats/send-text",
   checkSession,
   async (req: Request, res: Response) => {
     try {
-      const { chatId, message, typingTime = 0, footerName } = req.body;
+      const {
+        chatId,
+        message,
+        typingTime = 0,
+        footerName,
+        checkNumber = false,
+      } = req.body;
 
       if (!chatId || !message) {
         return res.status(400).json({
           success: false,
           message: "Missing required fields: chatId, message",
         });
+      }
+
+      // Check number registration if requested
+      if (checkNumber) {
+        const checkResult = await checkNumberRegistration(req.session!, chatId);
+        if (checkResult && !checkResult.isRegistered) {
+          return res.status(400).json({
+            success: false,
+            message: "Phone number is not registered on WhatsApp",
+            data: {
+              phone: checkResult.phone,
+              isRegistered: false,
+              jid: checkResult.jid,
+            },
+          });
+        }
       }
 
       const result = await req.session!.sendTextMessage(
@@ -405,6 +516,7 @@ router.post(
         caption,
         typingTime = 0,
         footerName,
+        checkNumber = false,
       } = req.body;
 
       if (!chatId || !imageUrl) {
@@ -412,6 +524,22 @@ router.post(
           success: false,
           message: "Missing required fields: chatId, imageUrl",
         });
+      }
+
+      // Check number registration if requested
+      if (checkNumber) {
+        const checkResult = await checkNumberRegistration(req.session!, chatId);
+        if (checkResult && !checkResult.isRegistered) {
+          return res.status(400).json({
+            success: false,
+            message: "Phone number is not registered on WhatsApp",
+            data: {
+              phone: checkResult.phone,
+              isRegistered: false,
+              jid: checkResult.jid,
+            },
+          });
+        }
       }
 
       const result = await req.session!.sendImage(
@@ -446,6 +574,7 @@ router.post(
         caption,
         typingTime = 0,
         footerName,
+        checkNumber = false,
       } = req.body;
 
       if (!chatId || !documentUrl || !filename) {
@@ -453,6 +582,22 @@ router.post(
           success: false,
           message: "Missing required fields: chatId, documentUrl, filename",
         });
+      }
+
+      // Check number registration if requested
+      if (checkNumber) {
+        const checkResult = await checkNumberRegistration(req.session!, chatId);
+        if (checkResult && !checkResult.isRegistered) {
+          return res.status(400).json({
+            success: false,
+            message: "Phone number is not registered on WhatsApp",
+            data: {
+              phone: checkResult.phone,
+              isRegistered: false,
+              jid: checkResult.jid,
+            },
+          });
+        }
       }
 
       const result = await req.session!.sendDocument(
@@ -488,6 +633,7 @@ router.post(
         name,
         typingTime = 0,
         footerName,
+        checkNumber = false,
       } = req.body;
 
       if (!chatId || latitude === undefined || longitude === undefined) {
@@ -495,6 +641,22 @@ router.post(
           success: false,
           message: "Missing required fields: chatId, latitude, longitude",
         });
+      }
+
+      // Check number registration if requested
+      if (checkNumber) {
+        const checkResult = await checkNumberRegistration(req.session!, chatId);
+        if (checkResult && !checkResult.isRegistered) {
+          return res.status(400).json({
+            success: false,
+            message: "Phone number is not registered on WhatsApp",
+            data: {
+              phone: checkResult.phone,
+              isRegistered: false,
+              jid: checkResult.jid,
+            },
+          });
+        }
       }
 
       const result = await req.session!.sendLocation(
@@ -522,13 +684,35 @@ router.post(
   checkSession,
   async (req: Request, res: Response) => {
     try {
-      const { chatId, contactName, contactPhone, typingTime = 0 } = req.body;
+      const {
+        chatId,
+        contactName,
+        contactPhone,
+        typingTime = 0,
+        checkNumber = false,
+      } = req.body;
 
       if (!chatId || !contactName || !contactPhone) {
         return res.status(400).json({
           success: false,
           message: "Missing required fields: chatId, contactName, contactPhone",
         });
+      }
+
+      // Check number registration if requested
+      if (checkNumber) {
+        const checkResult = await checkNumberRegistration(req.session!, chatId);
+        if (checkResult && !checkResult.isRegistered) {
+          return res.status(400).json({
+            success: false,
+            message: "Phone number is not registered on WhatsApp",
+            data: {
+              phone: checkResult.phone,
+              isRegistered: false,
+              jid: checkResult.jid,
+            },
+          });
+        }
       }
 
       const result = await req.session!.sendContact(
@@ -561,6 +745,7 @@ router.post(
         buttons,
         typingTime = 0,
         footerName,
+        checkNumber = false,
       } = req.body;
 
       if (!chatId || !text || !buttons || !Array.isArray(buttons)) {
@@ -568,6 +753,22 @@ router.post(
           success: false,
           message: "Missing required fields: chatId, text, buttons (array)",
         });
+      }
+
+      // Check number registration if requested
+      if (checkNumber) {
+        const checkResult = await checkNumberRegistration(req.session!, chatId);
+        if (checkResult && !checkResult.isRegistered) {
+          return res.status(400).json({
+            success: false,
+            message: "Phone number is not registered on WhatsApp",
+            data: {
+              phone: checkResult.phone,
+              isRegistered: false,
+              jid: checkResult.jid,
+            },
+          });
+        }
       }
 
       const result = await req.session!.sendButton(
@@ -579,6 +780,109 @@ router.post(
         footerName || null
       );
       return res.json(result);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+      return;
+    }
+  }
+);
+
+// Send OTP message
+router.post(
+  "/chats/send-otp",
+  checkSession,
+  async (req: Request, res: Response) => {
+    try {
+      const {
+        chatId,
+        otpCode,
+        message,
+        expiryMinutes = 5,
+        typingTime = 0,
+        footerName,
+        checkNumber = false,
+      } = req.body;
+
+      if (!chatId || !otpCode) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required fields: chatId, otpCode",
+        });
+      }
+
+      // Validate OTP code format (4-8 digits)
+      if (!/^\d{4,8}$/.test(otpCode)) {
+        return res.status(400).json({
+          success: false,
+          message: "OTP code must be 4-8 digits",
+        });
+      }
+
+      // Check number registration if requested
+      if (checkNumber) {
+        const checkResult = await checkNumberRegistration(req.session!, chatId);
+        if (checkResult && !checkResult.isRegistered) {
+          return res.status(400).json({
+            success: false,
+            message: "Phone number is not registered on WhatsApp",
+            data: {
+              phone: checkResult.phone,
+              isRegistered: false,
+              jid: checkResult.jid,
+            },
+          });
+        }
+      }
+
+      const result = await req.session!.sendOTP(
+        chatId,
+        otpCode,
+        message || "",
+        expiryMinutes,
+        typingTime,
+        footerName || null
+      );
+      return res.json(result);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+      return;
+    }
+  }
+);
+
+// Extract OTP from message text
+router.post(
+  "/chats/extract-otp",
+  checkSession,
+  async (req: Request, res: Response) => {
+    try {
+      const { messageText } = req.body;
+
+      if (!messageText) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required field: messageText",
+        });
+      }
+
+      const otpCode = MessageFormatter.extractOTP(messageText);
+
+      return res.json({
+        success: true,
+        message: otpCode
+          ? "OTP code extracted successfully"
+          : "No OTP code found in message",
+        data: {
+          otpCode: otpCode,
+          messageText: messageText,
+        },
+      });
     } catch (error: any) {
       res.status(500).json({
         success: false,

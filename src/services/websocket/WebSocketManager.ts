@@ -152,6 +152,13 @@ class WebSocketManager {
   }
 
   /**
+   * Emit pair code event
+   */
+  emitPairCode(sessionId: string, pairCode: string): void {
+    this.emitToSession(sessionId, "pair.code", { pairCode });
+  }
+
+  /**
    * Emit connection status change
    */
   emitConnectionStatus(
@@ -263,6 +270,13 @@ class WebSocketManager {
     this.emitToSession(sessionId, "logged.out", {
       message: "Session has been logged out",
     });
+  }
+
+  /**
+   * Emit OTP code extracted from message
+   */
+  emitOTP(sessionId: string, otpData: any): void {
+    this.emitToSession(sessionId, "otp", otpData);
   }
 
   /**

@@ -9,11 +9,12 @@ export interface ApiResponse<T = any> {
 
 export interface SessionInfo {
   sessionId: string;
-  status: 'connected' | 'disconnected' | 'connecting' | 'qr_ready';
+  status: 'connected' | 'disconnected' | 'connecting' | 'qr_ready' | 'pair_ready';
   isConnected: boolean;
   phoneNumber?: string | null;
   name?: string | null;
   qrCode?: string | null;
+  pairCode?: string | null;
   metadata?: Record<string, any>;
   webhooks?: WebhookConfig[];
 }
